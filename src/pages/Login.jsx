@@ -6,7 +6,7 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 export default function Login() {
   const { token } = useAuth()
 
-  if (token) return <Navigate to="/dashboard" replace />
+  if (token) return <Navigate to="/admin/dashboard" replace />
 
   function handleGoogleLogin() {
     window.location.href = `${API_BASE}/auth/google`

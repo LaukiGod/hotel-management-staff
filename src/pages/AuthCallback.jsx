@@ -12,7 +12,7 @@ export default function AuthCallback() {
 
     if (token) {
       login(token)
-      navigate('/dashboard', { replace: true })
+      navigate('/admin/dashboard', { replace: true })
     } else {
       navigate('/login', { replace: true })
     }

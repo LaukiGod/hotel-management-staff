@@ -2,16 +2,16 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 const navItems = [
-  { to: '/dashboard', label: 'Dashboard' },
-  { to: '/tables',    label: 'Tables' },
-  { to: '/orders',    label: 'Orders' },
-  { to: '/alerts',    label: 'Allergy Alerts' },
-  { to: '/inventory', label: 'Inventory' },
+  { to: '/admin/dashboard', label: 'Dashboard' },
+  { to: '/admin/tables',    label: 'Tables' },
+  { to: '/admin/orders',    label: 'Orders' },
+  { to: '/admin/alerts',    label: 'Allergy Alerts' },
+  { to: '/admin/inventory', label: 'Inventory' },
 ]
 
 const adminItems = [
-  { to: '/menu',  label: 'Menu' },
-  { to: '/staff', label: 'Staff' },
+  { to: '/admin/menu',  label: 'Menu' },
+  { to: '/admin/staff', label: 'Staff' },
 ]
 
 export default function Navbar() {

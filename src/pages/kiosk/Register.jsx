@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { kioskAxios } from '../../api/kioskAxios'
 import KioskShell from '../../components/KioskShell'
 import { useKioskSession } from '../../context/KioskSessionContext'
@@ -8,11 +8,16 @@ const PRESET_ALLERGIES = ['nuts', 'gluten', 'dairy', 'shellfish', 'eggs', 'soy',
 
 export default function KioskRegister() {
   const navigate = useNavigate()
-  const { tableNo, setUser, setAllergies } = useKioskSession()
-  const [name, setName] = useState('')
-  const [phoneNo, setPhoneNo] = useState('')
+  const location = useLocation()
+  const { tableNo, user, allergies: sessionAllergies, detailsDraft, setUser, setAllergies, setDetailsDraft, resetForTableChange } = useKioskSession()
+  const [name, setName] = useState(() => String(user?.name || detailsDraft?.name || ''))
+  const [phoneNo, setPhoneNo] = useState(() => String(user?.phoneNo || detailsDraft?.phoneNo || ''))
   const [allergyInput, setAllergyInput] = useState('')
-  const [allergies, setAllergyList] = useState([])
+  const [allergies, setAllergyList] = useState(() =>
+    Array.isArray(sessionAllergies) && sessionAllergies.length
+      ? sessionAllergies
+      : (Array.isArray(detailsDraft?.allergies) ? detailsDraft.allergies : [])
+  )
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -22,6 +27,28 @@ export default function KioskRegister() {
   useEffect(() => {
     if (!tableNo) navigate('/tables', { replace: true })
   }, [navigate, tableNo])
+
+  const cancelTo = location.state?.from || '/tables'
+
+  useEffect(() => {
+    setDetailsDraft({ name, phoneNo, allergies })
+  }, [name, phoneNo, allergies])
+
+  async function changeTable() {
+    setLoading(true)
+    setError('')
+    try {
+      if (tableNo) {
+        await kioskAxios.post('/user/clear-table', { tableNo: Number(tableNo) })
+      }
+    } catch {
+      // Safe to ignore when table was never claimed or already free.
+    } finally {
+      resetForTableChange()
+      setLoading(false)
+      navigate('/tables')
+    }
+  }
 
   function addAllergy(value) {
     const v = String(value || '').trim().toLowerCase()
@@ -43,7 +70,12 @@ export default function KioskRegister() {
     setLoading(true)
     setError('')
     try {
-      const payload = { tableNo: Number(tableNo), name: name.trim(), phoneNo: phoneNo.trim() }
+      const payload = {
+        tableNo: Number(tableNo),
+        name: name.trim(),
+        phoneNo: phoneNo.trim(),
+        allowExistingSession: cancelTo === '/menu',
+      }
 
       // Step 1: claim table + create user
       const res = await kioskAxios.post('/user/login-table', payload)
@@ -152,10 +184,19 @@ export default function KioskRegister() {
 
             <button
               type="button"
-              onClick={() => navigate('/tables')}
-              className="w-full text-sm text-white/70 hover:text-white transition-colors"
+              onClick={changeTable}
+              disabled={loading}
+              className="w-full text-sm text-white/70 hover:text-white transition-colors disabled:opacity-50"
             >
               Change table
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate(cancelTo)}
+              className="w-full text-sm text-white/70 hover:text-white transition-colors"
+            >
+              Cancel
             </button>
           </form>
         </div>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 
-const EMPTY_FORM = { name: '', price: '', ingredients: '', recipe: '', imageUrl: '' }
+const EMPTY_FORM = { name: '', price: '', ingredients: '', recipe: '', imageUrl: '', category: '' }
 
 export default function Menu() {
   const [dishes, setDishes] = useState([])
@@ -36,6 +36,7 @@ export default function Menu() {
     setForm({
       name: dish.name,
       price: dish.price,
+      category: dish.category || '',
       ingredients: dish.ingredients?.join(', ') || '',
       recipe: dish.recipe || '',
       imageUrl: dish.imageUrl || '',
@@ -49,6 +50,7 @@ export default function Menu() {
       const payload = {
         name: form.name,
         price: Number(form.price),
+        category: form.category.trim() || 'General',
         ingredients: form.ingredients.split(',').map(s => s.trim()).filter(Boolean),
         recipe: form.recipe,
         imageUrl: form.imageUrl,
@@ -103,6 +105,7 @@ export default function Menu() {
               <div>
                 <p className="font-semibold text-gray-900">{dish.name}</p>
                 <p className="text-sm text-gray-500 mt-0.5">₹{dish.price}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{dish.category || 'General'}</p>
               </div>
               <div className="flex gap-2 shrink-0">
                 <button onClick={() => openEdit(dish)} className="text-blue-600 hover:underline text-xs">Edit</button>
@@ -123,6 +126,7 @@ export default function Menu() {
             <div className="space-y-3">
               <Field label="Name *" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} />
               <Field label="Price *" type="number" value={form.price} onChange={v => setForm(f => ({ ...f, price: v }))} />
+              <Field label="Category / Type *" value={form.category} onChange={v => setForm(f => ({ ...f, category: v }))} />
               <Field label="Ingredients (comma separated)" value={form.ingredients} onChange={v => setForm(f => ({ ...f, ingredients: v }))} />
               <Field label="Recipe *" textarea value={form.recipe} onChange={v => setForm(f => ({ ...f, recipe: v }))} />
               <Field label="Image URL" value={form.imageUrl} onChange={v => setForm(f => ({ ...f, imageUrl: v }))} />

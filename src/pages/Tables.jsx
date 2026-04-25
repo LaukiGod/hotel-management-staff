@@ -12,17 +12,26 @@ export default function Tables() {
   const [error, setError] = useState('')
   const [selectedTable, setSelectedTable] = useState(null)
 
+  async function loadData() {
+    try {
+      const [tablesRes, ordersRes] = await Promise.all([
+        api.get('/restaurant/tables'),
+        api.get('/restaurant/orders').catch(() => []),
+      ])
+      setTables(Array.isArray(tablesRes) ? tablesRes : [])
+      setOrders(Array.isArray(ordersRes) ? ordersRes : [])
+      setError('')
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
-    Promise.all([
-      api.get('/restaurant/tables'),
-      api.get('/restaurant/orders').catch(() => []),
-    ])
-      .then(([tablesRes, ordersRes]) => {
-        setTables(Array.isArray(tablesRes) ? tablesRes : [])
-        setOrders(Array.isArray(ordersRes) ? ordersRes : [])
-      })
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false))
+    loadData()
+    const interval = setInterval(loadData, 5000)
+    return () => clearInterval(interval)
   }, [])
 
   async function markAvailable(tableNo) {

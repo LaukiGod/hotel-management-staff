@@ -1,0 +1,326 @@
+/* Kiosk welcome — shared look with `landing.js`, sans portal cards */
+
+.root {
+  --ember: #ff5c1a;
+  --ember-glow-strong: rgba(255, 92, 26, 0.55);
+  --cyan: #00e5cc;
+  --border-cyan: rgba(0, 229, 204, 0.35);
+  --text-primary: #f4f4f5;
+  --text-secondary: rgba(244, 244, 245, 0.75);
+  --text-muted: rgba(244, 244, 245, 0.5);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.typeDisplay {
+  font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.typeMono {
+  font-family: ui-monospace, 'Cascadia Code', Menlo, 'Courier New', monospace;
+}
+
+/* ─── Background ──────────────────────────────────────────── */
+.bgWrap {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
+
+.bgSlide {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transition: opacity 2.2s ease;
+  will-change: opacity;
+}
+.bgSlideActive {
+  opacity: 1;
+}
+
+.bgLeft {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    rgba(7, 8, 9, 0.98) 0%,
+    rgba(7, 8, 9, 0.94) 38%,
+    rgba(7, 8, 9, 0.8) 58%,
+    rgba(7, 8, 9, 0.55) 75%,
+    rgba(7, 8, 9, 0.3) 100%
+  );
+}
+
+.bgFade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to left, transparent 0%, rgba(7, 8, 9, 0.15) 60%, transparent 100%);
+}
+
+.bgBottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 220px;
+  background: linear-gradient(to top, rgba(7, 8, 9, 0.96) 0%, transparent 100%);
+}
+
+.bgVignette {
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 120px rgba(7, 8, 9, 0.6);
+  pointer-events: none;
+}
+
+/* ─── Page shell ──────────────────────────────────────────── */
+.page {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0 56px 0;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+.pageVisible {
+  opacity: 1;
+}
+
+/* ─── Nav ─────────────────────────────────────────────────── */
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 30px 0 0;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+.brandText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  text-align: left;
+}
+.brandName {
+  font-size: 21px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.025em;
+  line-height: 1;
+}
+.brandSub {
+  font-size: 9.5px;
+  color: var(--text-muted);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.onlineBadge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--cyan);
+  letter-spacing: 0.16em;
+  padding: 7px 16px;
+  border-radius: 100px;
+  border: 1px solid var(--border-cyan);
+  background: rgba(0, 229, 204, 0.06);
+  backdrop-filter: blur(8px);
+}
+.onlineDot {
+  width: 5px;
+  height: 5px;
+  background: var(--cyan);
+  border-radius: 50%;
+  box-shadow: 0 0 6px var(--cyan);
+  animation: pulseCyan 2.2s ease-in-out infinite;
+}
+
+/* ─── Hero ────────────────────────────────────────────────── */
+.hero {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 28px;
+  margin-top: 40px;
+  padding-bottom: 24px;
+}
+
+.accentLine {
+  width: 2px;
+  height: 260px;
+  flex-shrink: 0;
+  background: linear-gradient(to bottom, transparent 0%, var(--ember) 20%, var(--ember) 75%, transparent 100%);
+  border-radius: 1px;
+  margin-top: 12px;
+  opacity: 0.7;
+}
+
+.heroInner {
+  display: flex;
+  flex-direction: column;
+  max-width: 640px;
+  text-align: left;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 10px;
+  color: var(--ember);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  padding: 7px 16px;
+  border-radius: 100px;
+  border: 1px solid rgba(255, 92, 26, 0.3);
+  background: rgba(255, 92, 26, 0.08);
+  width: fit-content;
+  margin-bottom: 20px;
+}
+.pillDot {
+  width: 5px;
+  height: 5px;
+  background: var(--ember);
+  border-radius: 50%;
+  box-shadow: 0 0 6px var(--ember-glow-strong);
+  animation: pulseEmber 2.5s ease-in-out infinite;
+}
+
+.headline {
+  font-size: clamp(36px, 4.8vw, 68px);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  margin-bottom: 20px;
+}
+.headlineAccent {
+  background: linear-gradient(128deg, #ff8c52 0%, var(--ember) 40%, #e04510 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.sub {
+  font-size: 15px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  font-weight: 300;
+  margin-bottom: 0;
+  letter-spacing: 0.01em;
+  max-width: 520px;
+}
+
+/* ─── Footer stats ────────────────────────────────────────── */
+.footer {
+  margin-top: auto;
+  padding: 0 0 44px;
+}
+.footerLine {
+  height: 1px;
+  background: linear-gradient(90deg, var(--ember-glow-strong) 0%, rgba(255, 255, 255, 0.06) 40%, transparent 100%);
+  margin-bottom: 28px;
+}
+.statsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+}
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 40px;
+  border-right: 1px solid var(--border-subtle);
+  margin-right: 40px;
+  text-align: left;
+}
+.stat:last-child {
+  border-right: none;
+  margin-right: 0;
+  padding-right: 0;
+}
+.statVal {
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.statLabel {
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.tapHint {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+  margin-top: 32px;
+  width: 100%;
+}
+
+@keyframes pulseCyan {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes pulseEmber {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: 0 24px 0;
+  }
+  .accentLine {
+    display: none;
+  }
+  .hero {
+    margin-top: 48px;
+    gap: 0;
+  }
+  .statsRow {
+    flex-wrap: wrap;
+  }
+  .stat {
+    padding-right: 24px;
+    margin-right: 24px;
+    margin-bottom: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .headline {
+    font-size: 38px;
+  }
+}

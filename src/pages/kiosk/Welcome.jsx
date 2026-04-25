@@ -1,38 +1,84 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import useEmblaCarousel from 'embla-carousel-react'
-import Autoplay from 'embla-carousel-autoplay'
-import { kioskAxios } from '../../api/kioskAxios'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import KioskShell from '../../components/KioskShell'
+import { useKioskSession } from '../../context/KioskSessionContext'
+import { getKioskResumePath } from '../../utils/kioskResumePath'
+import styles from './KioskWelcome.module.css'
+
+const FOOD_IMAGES = [
+  'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1600&q=85',
+  'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=1600&q=85',
+  'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=1600&q=85',
+]
+
+const STATS = [
+  { val: '09', label: 'Active Tables', color: 'var(--ember)' },
+  { val: 'AI', label: 'Allergy Engine', color: 'var(--cyan)' },
+  { val: '3', label: 'Order States', color: 'var(--text-secondary)' },
+  { val: 'RT', label: 'Real-time', color: 'var(--ember)' },
+]
+
+function Logo({ size = 38 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none" aria-hidden>
+      <circle cx="20" cy="20" r="18" stroke="var(--ember)" strokeWidth="1.2" opacity="0.35" />
+      <path
+        d="M20 8 C20 8 29 13.5 29 20 C29 27 20 32 20 32 C20 32 11 27 11 20 C11 13.5 20 8 20 8Z"
+        fill="var(--ember)"
+        opacity="0.92"
+      />
+      <circle cx="20" cy="20" r="5.5" fill="rgba(7,8,9,0.95)" />
+      <circle cx="20" cy="20" r="2.5" fill="var(--ember)" />
+      <line x1="20" y1="1.5" x2="20" y2="8.5" stroke="var(--cyan)" strokeWidth="1.8" strokeLinecap="round" opacity="0.85" />
+      <circle cx="20" cy="1.5" r="1.8" fill="var(--cyan)" opacity="0.85" />
+    </svg>
+  )
+}
 
 export default function KioskWelcome() {
   const navigate = useNavigate()
-  const [dishes, setDishes] = useState([])
-  const [error, setError] = useState('')
-
-  const autoplay = useMemo(() => Autoplay({ delay: 2500, stopOnInteraction: false }), [])
-  const [emblaRef] = useEmblaCarousel({ loop: true, align: 'start' }, [autoplay])
-
+  const location = useLocation()
+  const { tableNo, user, orderId, kioskPath } = useKioskSession()
+  const [imgIndex, setImgIndex] = useState(0)
+  const [loaded, setLoaded] = useState(false)
   const idleTimer = useRef(null)
+  /** When true, skip resuming to a deeper step (user explicitly chose to view welcome). */
+  const stayOnWelcomeRef = useRef(false)
+
+  const restaurantName = import.meta.env.VITE_RESTAURANT_NAME || 'Smart Restaurant'
+  const restaurantTagline = import.meta.env.VITE_RESTAURANT_TAGLINE || 'AI-powered ordering with real-time allergy detection. Frictionless from your table to the kitchen.'
 
   useEffect(() => {
-    let mounted = true
-    kioskAxios
-      .get('/user/menu')
-      .then((d) => {
-        if (!mounted) return
-        setDishes(Array.isArray(d.data) ? d.data : d.data?.dishes || [])
-      })
-      .catch((e) => setError(e?.response?.data?.message || e.message || 'Failed to load'))
+    const t1 = setTimeout(() => setLoaded(true), 60)
+    const t2 = setInterval(() => setImgIndex((i) => (i + 1) % FOOD_IMAGES.length), 5500)
     return () => {
-      mounted = false
+      clearTimeout(t1)
+      clearInterval(t2)
     }
   }, [])
 
+  useLayoutEffect(() => {
+    if (location.state?.kioskIntent === 'showWelcome') {
+      stayOnWelcomeRef.current = true
+      navigate('/', { replace: true, state: null })
+      return
+    }
+    if (stayOnWelcomeRef.current) {
+      return
+    }
+    const p = getKioskResumePath({ tableNo, user, orderId, kioskPath })
+    if (p) {
+      navigate(p, { replace: true })
+    }
+  }, [navigate, tableNo, user, orderId, kioskPath, location.state])
+
   useEffect(() => {
+    function goTables() {
+      navigate('/tables')
+    }
     function resetIdle() {
       if (idleTimer.current) clearTimeout(idleTimer.current)
-      idleTimer.current = setTimeout(() => navigate('/tables'), 30_000)
+      idleTimer.current = setTimeout(goTables, 30_000)
     }
     resetIdle()
     window.addEventListener('pointerdown', resetIdle)
@@ -46,85 +92,91 @@ export default function KioskWelcome() {
     }
   }, [navigate])
 
-  const accent = import.meta.env.VITE_KIOSK_ACCENT || '#F97316'
-  const restaurantName = import.meta.env.VITE_RESTAURANT_NAME || 'Smart Restaurant'
-  const restaurantTagline = import.meta.env.VITE_RESTAURANT_TAGLINE || 'Tap. Order. Pay. Relax.'
-  const logoUrl = import.meta.env.VITE_RESTAURANT_LOGO || ''
-
   function proceed() {
+    stayOnWelcomeRef.current = false
     navigate('/tables')
   }
 
+  function onKeyDown(e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      proceed()
+    }
+  }
+
   return (
-    <KioskShell className="relative overflow-hidden" >
+    <KioskShell className="!bg-transparent relative overflow-hidden">
       <div
-        className="absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(1200px 600px at 20% 10%, rgba(255,255,255,0.08), transparent 60%), radial-gradient(900px 500px at 80% 30%, rgba(255,255,255,0.06), transparent 60%), linear-gradient(180deg, rgba(0,0,0,0.85), rgba(0,0,0,0.95))',
-        }}
-      />
-      <div className="absolute -top-24 -left-24 h-72 w-72 rounded-full blur-3xl opacity-30" style={{ backgroundColor: accent }} />
-      <div className="absolute top-12 right-[-120px] h-96 w-96 rounded-full blur-3xl opacity-20" style={{ backgroundColor: accent }} />
-
-      <button
+        className={styles.root}
         onClick={proceed}
-        className="relative z-10 w-full min-h-screen flex flex-col items-center justify-center px-6 pt-10 pb-32 text-center select-none"
-        style={{ ['--accent']: accent }}
+        onKeyDown={onKeyDown}
+        role="button"
+        tabIndex={0}
+        aria-label="Go to table selection. Tap or press Enter."
       >
-        <div className="kiosk-ambient-steam absolute inset-0 pointer-events-none" />
-
-        <div className="max-w-3xl mx-auto">
-          <div className="mx-auto w-28 h-28 rounded-3xl bg-white/5 border border-white/10 backdrop-blur flex items-center justify-center shadow-[0_0_80px_rgba(249,115,22,0.25)]">
-            {logoUrl ? (
-              <img src={logoUrl} alt={restaurantName} className="w-20 h-20 object-contain" />
-            ) : (
-              <div className="w-16 h-16 rounded-2xl" style={{ backgroundColor: accent, boxShadow: `0 0 40px ${accent}55` }} />
-            )}
-          </div>
-
-          <h1 className="mt-7 text-4xl md:text-6xl font-extrabold tracking-tight">
-            <span className="text-white">{restaurantName}</span>
-          </h1>
-          <p className="mt-3 text-lg md:text-2xl text-white/75">
-            {restaurantTagline}
-          </p>
-
-          {error ? <p className="mt-6 text-sm text-red-300">{error}</p> : null}
+        <div className={styles.bgWrap} aria-hidden>
+          {FOOD_IMAGES.map((src, i) => (
+            <div
+              key={src}
+              className={`${styles.bgSlide} ${i === imgIndex ? styles.bgSlideActive : ''}`}
+              style={{ backgroundImage: `url(${src})` }}
+            />
+          ))}
+          <div className={styles.bgLeft} />
+          <div className={styles.bgFade} />
+          <div className={styles.bgBottom} />
+          <div className={styles.bgVignette} />
         </div>
 
-        <div className="absolute bottom-24 left-0 right-0 px-6">
-          <p className="kiosk-pulse text-sm md:text-base text-white/70">
-            Tap anywhere to begin
-          </p>
-        </div>
-
-        <div className="absolute bottom-0 left-0 right-0 pb-6">
-          <div className="mx-auto max-w-5xl px-6">
-            <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-3">
-              <div className="overflow-hidden" ref={emblaRef}>
-                <div className="flex gap-3">
-                  {(dishes?.length ? dishes : Array.from({ length: 8 })).map((dish, idx) => {
-                    const src = dish?.imageUrl
-                    return (
-                      <div key={dish?.dishId || dish?._id || idx} className="flex-[0_0_40%] sm:flex-[0_0_26%] md:flex-[0_0_18%]">
-                        <div className="aspect-[4/3] rounded-xl overflow-hidden bg-white/5 border border-white/10">
-                          {src ? (
-                            <img src={src} alt={dish?.name || 'Dish'} className="h-full w-full object-cover" />
-                          ) : (
-                            <div className="h-full w-full bg-gradient-to-br from-white/10 to-white/0" />
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
+        <div className={`${styles.page} ${loaded ? styles.pageVisible : ''}`}>
+          <nav className={styles.nav}>
+            <div className={styles.brand}>
+              <Logo size={36} />
+              <div className={styles.brandText}>
+                <span className={`${styles.brandName} ${styles.typeDisplay}`}>{restaurantName}</span>
+                <span className={`${styles.brandSub} ${styles.typeMono}`}>Restaurant intelligence</span>
               </div>
             </div>
-          </div>
+            <div className={`${styles.onlineBadge} ${styles.typeMono}`}>
+              <span className={styles.onlineDot} />
+              SYSTEM ONLINE
+            </div>
+          </nav>
+
+          <main className={styles.hero}>
+            <div className={styles.accentLine} />
+            <div className={styles.heroInner}>
+              <div className={`${styles.pill} ${styles.typeMono}`}>
+                <span className={styles.pillDot} />
+                Food intelligence platform
+              </div>
+              <h1 className={`${styles.headline} ${styles.typeDisplay}`}>
+                Where great food
+                <br />
+                meets <span className={styles.headlineAccent}>smart systems</span>
+              </h1>
+              <p className={`${styles.sub} ${styles.typeDisplay}`}>{restaurantTagline.replace(/\n/g, ' ')}</p>
+              <p className={`${styles.tapHint} ${styles.typeDisplay} kiosk-pulse`}>
+                Tap anywhere to begin
+              </p>
+            </div>
+          </main>
+
+          <footer className={styles.footer}>
+            <div className={styles.footerLine} />
+            <div className={styles.statsRow}>
+              {STATS.map(({ val, label, color }) => (
+                <div key={label} className={styles.stat}>
+                  <span className={`${styles.statVal} ${styles.typeMono}`} style={{ color }}>
+                    {val}
+                  </span>
+                  <span className={styles.statLabel}>{label}</span>
+                </div>
+              ))}
+            </div>
+          </footer>
         </div>
-      </button>
+      </div>
     </KioskShell>
   )
 }
-

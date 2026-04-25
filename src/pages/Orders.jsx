@@ -27,11 +27,22 @@ export default function Orders() {
   const [editCart, setEditCart] = useState({})
   const [editAllergiesInput, setEditAllergiesInput] = useState('')
 
+  async function loadOrders() {
+    try {
+      const data = await api.get('/restaurant/orders')
+      setOrders(data)
+      setError('')
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
-    api.get('/restaurant/orders')
-      .then(setOrders)
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false))
+    loadOrders()
+    const interval = setInterval(loadOrders, 5000)
+    return () => clearInterval(interval)
   }, [])
 
   useEffect(() => {

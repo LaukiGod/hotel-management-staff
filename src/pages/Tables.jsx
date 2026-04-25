@@ -11,10 +11,33 @@ export default function Tables() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    api.get('/restaurant/tables')
-      .then(setTables)
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false))
+    let mounted = true
+    let firstLoad = true
+
+    async function loadTables() {
+      try {
+        const tablesRes = await api.get('/restaurant/tables')
+        if (!mounted) return
+        setTables(Array.isArray(tablesRes) ? tablesRes : [])
+        setError('')
+      } catch (e) {
+        if (!mounted) return
+        setError(e.message)
+      } finally {
+        if (firstLoad) {
+          setLoading(false)
+          firstLoad = false
+        }
+      }
+    }
+
+    loadTables()
+    const interval = setInterval(loadTables, 5000)
+
+    return () => {
+      mounted = false
+      clearInterval(interval)
+    }
   }, [])
 
   async function markAvailable(tableNo) {

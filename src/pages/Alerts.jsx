@@ -6,11 +6,22 @@ export default function Alerts() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
+  async function loadAlerts() {
+    try {
+      const data = await api.get('/restaurant/alerts')
+      setAlerts(data)
+      setError('')
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
-    api.get('/restaurant/alerts')
-      .then(setAlerts)
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false))
+    loadAlerts()
+    const interval = setInterval(loadAlerts, 5000)
+    return () => clearInterval(interval)
   }, [])
 
   if (loading) return <p className="p-6 text-gray-500">Loading...</p>

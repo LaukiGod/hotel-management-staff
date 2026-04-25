@@ -4,40 +4,82 @@ import { api } from '../../api/client'
 import CustomerLayout from './CustomerLayout'
 import { getCustomerSession } from './customerSession'
 
+const UNCATEGORIZED = 'Other'
+
+function normalizeCategory(c) {
+  const s = String(c == null ? '' : c).trim()
+  return s || UNCATEGORIZED
+}
+
+function groupByCategory(dishes) {
+  const m = new Map()
+  for (const d of dishes) {
+    const k = normalizeCategory(d.category)
+    if (!m.has(k)) m.set(k, [])
+    m.get(k).push(d)
+  }
+  const keys = [...m.keys()].sort((a, b) => {
+    if (a === UNCATEGORIZED) return 1
+    if (b === UNCATEGORIZED) return -1
+    return a.localeCompare(b)
+  })
+  return keys.map((name) => ({ name, dishes: m.get(name) }))
+}
+
 export default function CustomerMenu() {
   const navigate = useNavigate()
   const session = getCustomerSession()
   const [menu, setMenu] = useState([])
+  const [loading, setLoading] = useState(true)
   const [cart, setCart] = useState({})
   const [ordering, setOrdering] = useState(false)
   const [activeCategory, setActiveCategory] = useState('All')
   const [selectedDish, setSelectedDish] = useState(null)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     if (!session?.tableNo) {
       navigate('/customer/login', { replace: true })
       return
     }
-    api.get('/user/menu').then(setMenu).catch((e) => alert(e.message))
+    setLoading(true)
+    api
+      .get('/user/menu')
+      .then((data) => setMenu(Array.isArray(data) ? data : data?.dishes || []))
+      .catch((e) => {
+        alert(e.message)
+        setMenu([])
+      })
+      .finally(() => setLoading(false))
   }, [navigate, session?.tableNo])
+
+  const searchLower = search.trim().toLowerCase()
+  const filteredMenu = useMemo(() => {
+    if (!searchLower) return menu
+    return menu.filter((d) => String(d.name || '').toLowerCase().includes(searchLower))
+  }, [menu, searchLower])
+
+  const categories = useMemo(() => {
+    const unique = new Set(
+      menu.map((d) => String(d?.category == null || d.category === '' ? 'General' : d.category).trim() || 'General')
+    )
+    return ['All', ...Array.from(unique).sort((a, b) => a.localeCompare(b))]
+  }, [menu])
+
+  const menuForView = useMemo(() => {
+    if (activeCategory === 'All') return filteredMenu
+    return filteredMenu.filter(
+      (d) => (String(d?.category == null || d.category === '' ? 'General' : d.category).trim() || 'General') === activeCategory
+    )
+  }, [activeCategory, filteredMenu])
+
+  const grouped = useMemo(() => groupByCategory(menuForView), [menuForView])
 
   const selectedDishIds = useMemo(
     () => Object.entries(cart).filter(([, qty]) => qty > 0).flatMap(([id, qty]) => Array.from({ length: qty }, () => id)),
     [cart]
   )
 
-  const categories = useMemo(() => {
-    const unique = new Set(menu.map((dish) => String(dish.category || 'General').trim() || 'General'))
-    return ['All', ...Array.from(unique)]
-  }, [menu])
-
-  const visibleMenu = useMemo(() => {
-    if (activeCategory === 'All') return menu
-    return menu.filter((dish) => (String(dish.category || 'General').trim() || 'General') === activeCategory)
-  }, [menu, activeCategory])
-
-  const featuredItems = useMemo(() => visibleMenu.slice(0, 6), [visibleMenu])
-  const listItems = useMemo(() => visibleMenu.slice(6), [visibleMenu])
   const cartTotal = useMemo(
     () => menu.reduce((sum, dish) => sum + ((cart[dish._id] || 0) * (Number(dish.price) || 0)), 0),
     [cart, menu]
@@ -48,6 +90,11 @@ export default function CustomerMenu() {
       const next = Math.max((prev[dishId] || 0) + delta, 0)
       return { ...prev, [dishId]: next }
     })
+  }
+
+  function scrollToSection(i) {
+    const el = document.getElementById(`cust-cat-${i}`)
+    el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   async function placeAndPay() {
@@ -64,15 +111,26 @@ export default function CustomerMenu() {
     }
   }
 
+  if (!session?.tableNo) {
+    return null
+  }
+
   return (
     <CustomerLayout title="Menu">
-      <div className="mx-auto w-full max-w-md space-y-4 pb-24">
+      <div className="mx-auto w-full max-w-lg space-y-4 pb-24">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs text-gray-500">Table #{session?.tableNo}</p>
             <h2 className="text-xl font-bold text-gray-900">Dishes</h2>
+            {!loading && (
+              <p className="text-xs text-gray-500 mt-0.5">
+                {menuForView.length} item{menuForView.length === 1 ? '' : 's'}
+                {searchLower ? ' matching' : ''}
+              </p>
+            )}
           </div>
           <button
+            type="button"
             onClick={() => navigate('/customer/track')}
             className="w-9 h-9 rounded-full border border-gray-300 bg-white text-sm"
             aria-label="Track orders"
@@ -81,102 +139,162 @@ export default function CustomerMenu() {
           </button>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-xl px-3 py-2 flex items-center gap-2">
-          <span className="text-sm text-gray-400">🔍</span>
-          <input
-            readOnly
-            value="Search menu"
-            className="w-full bg-transparent text-sm text-gray-500 outline-none"
-          />
-        </div>
-
-        <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className="flex gap-2 min-w-max">
-            {categories.map((category) => (
-              <button
-                key={category}
-                onClick={() => setActiveCategory(category)}
-                className={`px-3 py-2 rounded-xl text-xs font-medium border transition-colors ${
-                  activeCategory === category
-                    ? 'bg-gray-900 text-white border-gray-900'
-                    : 'bg-white text-gray-700 border-gray-300'
-                }`}
-              >
-                {category}
-              </button>
-            ))}
+        <div>
+          <label className="sr-only" htmlFor="cust-menu-search">
+            Search menu
+          </label>
+          <div className="bg-white border border-gray-200 rounded-xl px-3 py-2.5 flex items-center gap-2">
+            <span className="text-sm text-gray-400" aria-hidden>
+              🔍
+            </span>
+            <input
+              id="cust-menu-search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name…"
+              className="w-full bg-transparent text-sm text-gray-900 placeholder:text-gray-400 outline-none"
+            />
           </div>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-3 flex items-center justify-between">
-          <div>
-            <p className="text-xs text-gray-500">Special offer</p>
-            <p className="text-sm font-semibold text-gray-900">Get extra discounts on combos</p>
-          </div>
-          <span className="text-lg">🎁</span>
-        </div>
-
-        <section>
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-semibold text-gray-900">Popular choices</p>
-          </div>
-          <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="flex gap-3 min-w-max">
-              {featuredItems.map((dish) => (
-                <button
-                  key={dish._id}
-                  onClick={() => setSelectedDish(dish)}
-                  className="w-36 text-left bg-white border border-gray-200 rounded-2xl p-2 shrink-0"
-                >
-                  {dish.imageUrl ? (
-                    <img src={dish.imageUrl} alt={dish.name} className="w-full h-20 object-cover rounded-xl" />
-                  ) : (
-                    <div className="w-full h-20 rounded-xl bg-gray-100 flex items-center justify-center text-xs text-gray-500">No image</div>
-                  )}
-                  <p className="mt-2 text-xs font-semibold text-gray-900 truncate">{dish.name}</p>
-                  <p className="text-xs text-gray-500">Rs {dish.price}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="space-y-2">
-          <p className="text-sm font-semibold text-gray-900">Menu list</p>
-          {(listItems.length ? listItems : featuredItems).map((dish) => (
-            <div key={dish._id} onClick={() => setSelectedDish(dish)} className="bg-white border border-gray-200 rounded-2xl p-2.5">
-              <div className="flex gap-3">
-                {dish.imageUrl ? (
-                  <img src={dish.imageUrl} alt={dish.name} className="w-20 h-20 object-cover rounded-xl" />
-                ) : (
-                  <div className="w-20 h-20 rounded-xl bg-gray-100 flex items-center justify-center text-xs text-gray-500">No image</div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{dish.name}</p>
-                  <p className="text-xs text-gray-500 truncate mt-0.5">{dish.recipe || 'Freshly prepared'}</p>
-                  <div className="mt-2 flex items-center justify-between">
-                    <p className="text-sm font-semibold text-gray-900">Rs {dish.price}</p>
-                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                      <button className="w-7 h-7 rounded-lg bg-gray-100 text-sm" onClick={() => changeQty(dish._id, -1)}>-</button>
-                      <span className="text-sm font-medium w-5 text-center">{cart[dish._id] || 0}</span>
-                      <button className="w-7 h-7 rounded-lg bg-gray-900 text-white text-sm" onClick={() => changeQty(dish._id, 1)}>+</button>
-                    </div>
-                  </div>
-                </div>
+        {loading ? (
+          <p className="text-sm text-gray-500 py-4">Loading menu…</p>
+        ) : (
+          <>
+            <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1">
+              <div className="flex gap-2 min-w-max pb-1">
+                {categories.map((category) => (
+                  <button
+                    key={category}
+                    type="button"
+                    onClick={() => {
+                      setActiveCategory(category)
+                    }}
+                    className={`shrink-0 px-3 py-2 rounded-xl text-xs font-medium border transition-colors ${
+                      activeCategory === category
+                        ? 'bg-gray-900 text-white border-gray-900'
+                        : 'bg-white text-gray-700 border-gray-300'
+                    }`}
+                  >
+                    {category}
+                  </button>
+                ))}
               </div>
             </div>
-          ))}
-        </section>
+
+            {activeCategory === 'All' && grouped.length > 0 && (
+              <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:thin]">
+                <div className="flex gap-2 min-w-max pb-1 text-xs text-gray-600">
+                  {grouped.map((g, i) => (
+                    <button
+                      type="button"
+                      key={g.name}
+                      onClick={() => scrollToSection(i)}
+                      className="shrink-0 rounded-full border border-dashed border-gray-300 bg-gray-50 px-3 py-1 hover:bg-gray-100"
+                    >
+                      {g.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="rounded-2xl border border-dashed border-amber-200/80 bg-amber-50/80 p-3 flex items-center justify-between gap-2">
+              <p className="text-xs sm:text-sm font-medium text-amber-950/90">Swipe each row sideways for more items in a category</p>
+              <span className="text-base shrink-0" aria-hidden>
+                ↔
+              </span>
+            </div>
+
+            {menuForView.length === 0 ? (
+              <p className="text-center text-sm text-gray-500 py-6">
+                {search.trim() ? 'No dishes match your search.' : 'No dishes in this category yet.'}
+              </p>
+            ) : activeCategory === 'All' && grouped.length > 1 ? (
+              <div className="space-y-8">
+                {grouped.map((group, i) => (
+                  <section key={group.name} id={`cust-cat-${i}`} className="scroll-mt-24">
+                    <div className="flex items-baseline justify-between mb-2">
+                      <h3 className="text-sm font-bold text-gray-900">{group.name}</h3>
+                      <span className="text-xs text-gray-500">{group.dishes.length} items</span>
+                    </div>
+                    <div className="overflow-x-auto overflow-y-hidden -mx-1 px-1 pb-2 scroll-smooth snap-x snap-mandatory [scrollbar-width:thin]">
+                      <ul className="flex gap-3 w-max pr-1">
+                        {group.dishes.map((dish) => (
+                          <li key={dish._id} className="w-40 sm:w-44 shrink-0 snap-start">
+                            <DishRowCard
+                              dish={dish}
+                              cart={cart}
+                              onOpen={() => setSelectedDish(dish)}
+                              onChangeQty={changeQty}
+                            />
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </section>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {menuForView.map((dish) => (
+                  <div
+                    key={dish._id}
+                    onClick={() => setSelectedDish(dish)}
+                    onKeyDown={(e) => e.key === 'Enter' && setSelectedDish(dish)}
+                    role="button"
+                    tabIndex={0}
+                    className="bg-white border border-gray-200 rounded-2xl p-2.5 focus:outline-none focus:ring-2 focus:ring-gray-400"
+                  >
+                    <div className="flex gap-3">
+                      {dish.imageUrl ? (
+                        <img src={dish.imageUrl} alt="" className="w-20 h-20 object-cover rounded-xl" />
+                      ) : (
+                        <div className="w-20 h-20 rounded-xl bg-gray-100 flex items-center justify-center text-xs text-gray-500">
+                          No image
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{dish.name}</p>
+                        <p className="text-xs text-gray-500 truncate mt-0.5">{dish.recipe || 'Freshly prepared'}</p>
+                        <div className="mt-2 flex items-center justify-between">
+                          <p className="text-sm font-semibold text-gray-900">Rs {dish.price}</p>
+                          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              className="w-7 h-7 rounded-lg bg-gray-100 text-sm"
+                              onClick={() => changeQty(dish._id, -1)}
+                            >
+                              -
+                            </button>
+                            <span className="text-sm font-medium w-5 text-center">{cart[dish._id] || 0}</span>
+                            <button
+                              type="button"
+                              className="w-7 h-7 rounded-lg bg-gray-900 text-white text-sm"
+                              onClick={() => changeQty(dish._id, 1)}
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {selectedDish && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-2 sm:p-4">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setSelectedDish(null)} />
-          <div className="relative w-full max-w-md bg-white rounded-2xl border border-gray-200 shadow-xl overflow-hidden">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setSelectedDish(null)} role="presentation" />
+          <div className="relative w-full max-w-md bg-white rounded-2xl border border-gray-200 shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
             {selectedDish.imageUrl ? (
-              <img src={selectedDish.imageUrl} alt={selectedDish.name} className="w-full h-40 object-cover" />
+              <img src={selectedDish.imageUrl} alt="" className="w-full h-40 object-cover shrink-0" />
             ) : null}
-            <div className="p-4">
+            <div className="p-4 overflow-auto">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-lg font-bold text-gray-900">{selectedDish.name}</p>
@@ -191,11 +309,15 @@ export default function CustomerMenu() {
 
               <div className="mt-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <button className="w-8 h-8 rounded-lg bg-gray-100" onClick={() => changeQty(selectedDish._id, -1)}>-</button>
+                  <button type="button" className="w-8 h-8 rounded-lg bg-gray-100" onClick={() => changeQty(selectedDish._id, -1)}>
+                    -
+                  </button>
                   <span className="w-8 text-center">{cart[selectedDish._id] || 0}</span>
-                  <button className="w-8 h-8 rounded-lg bg-gray-900 text-white" onClick={() => changeQty(selectedDish._id, 1)}>+</button>
+                  <button type="button" className="w-8 h-8 rounded-lg bg-gray-900 text-white" onClick={() => changeQty(selectedDish._id, 1)}>
+                    +
+                  </button>
                 </div>
-                <button onClick={() => setSelectedDish(null)} className="px-3 py-2 text-sm border border-gray-300 rounded-lg">
+                <button type="button" onClick={() => setSelectedDish(null)} className="px-3 py-2 text-sm border border-gray-300 rounded-lg">
                   Done
                 </button>
               </div>
@@ -211,6 +333,7 @@ export default function CustomerMenu() {
             <p className="text-sm font-semibold text-gray-900 truncate">Total: Rs {Math.round(cartTotal)}</p>
           </div>
           <button
+            type="button"
             onClick={placeAndPay}
             disabled={ordering || selectedDishIds.length === 0}
             className="px-4 py-2 text-sm bg-gray-900 text-white rounded-xl disabled:opacity-50"
@@ -220,5 +343,30 @@ export default function CustomerMenu() {
         </div>
       </div>
     </CustomerLayout>
+  )
+}
+
+function DishRowCard({ dish, cart, onOpen, onChangeQty }) {
+  return (
+    <div className="h-full text-left bg-white border border-gray-200 rounded-2xl p-2 flex flex-col">
+      <button type="button" onClick={onOpen} className="w-full text-left grow flex flex-col">
+        {dish.imageUrl ? (
+          <img src={dish.imageUrl} alt="" className="w-full h-24 object-cover rounded-xl" />
+        ) : (
+          <div className="w-full h-24 rounded-xl bg-gray-100 flex items-center justify-center text-[10px] text-gray-500">No image</div>
+        )}
+        <p className="mt-2 text-xs font-semibold text-gray-900 line-clamp-2">{dish.name}</p>
+        <p className="text-xs text-gray-500">Rs {dish.price}</p>
+      </button>
+      <div className="mt-2 flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="w-7 h-7 rounded-lg bg-gray-100 text-sm" onClick={() => onChangeQty(dish._id, -1)}>
+          -
+        </button>
+        <span className="text-xs font-medium w-5 text-center">{cart[dish._id] || 0}</span>
+        <button type="button" className="w-7 h-7 rounded-lg bg-gray-900 text-white text-sm" onClick={() => onChangeQty(dish._id, 1)}>
+          +
+        </button>
+      </div>
+    </div>
   )
 }

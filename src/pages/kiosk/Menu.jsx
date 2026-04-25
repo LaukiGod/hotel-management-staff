@@ -1,10 +1,31 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import useEmblaCarousel from 'embla-carousel-react'
 import { kioskAxios } from '../../api/kioskAxios'
 import KioskShell from '../../components/KioskShell'
 import { useKioskSession } from '../../context/KioskSessionContext'
+
+const UNCATEGORIZED = 'Other'
+
+function normalizeCategory(c) {
+  const s = String(c == null ? '' : c).trim()
+  return s || UNCATEGORIZED
+}
+
+function groupByCategory(dishes) {
+  const m = new Map()
+  for (const d of dishes) {
+    const k = normalizeCategory(d.category)
+    if (!m.has(k)) m.set(k, [])
+    m.get(k).push(d)
+  }
+  const keys = [...m.keys()].sort((a, b) => {
+    if (a === UNCATEGORIZED) return 1
+    if (b === UNCATEGORIZED) return -1
+    return a.localeCompare(b)
+  })
+  return keys.map((name) => ({ name, dishes: m.get(name) }))
+}
 
 export default function KioskMenu() {
   const navigate = useNavigate()
@@ -14,10 +35,19 @@ export default function KioskMenu() {
   const [error, setError] = useState('')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [placing, setPlacing] = useState(false)
-  const [emblaRef] = useEmblaCarousel({ loop: true, align: 'start' })
-  const [viewportWidth, setViewportWidth] = useState(() =>
-    typeof window === 'undefined' ? 1280 : window.innerWidth
-  )
+  const [search, setSearch] = useState('')
+  const [focusCategory, setFocusCategory] = useState(null)
+  const chipRowRef = useRef(null)
+
+  const scrollCatIntoView = useCallback((nameOrIndex) => {
+    if (nameOrIndex === '__top__' || nameOrIndex === 'all') {
+      document.getElementById('kiosk-menu-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      return
+    }
+    if (typeof nameOrIndex === 'number') {
+      document.getElementById(`kiosk-cat-section-${nameOrIndex}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [])
 
   useEffect(() => {
     if (!tableNo || !user) {
@@ -32,14 +62,28 @@ export default function KioskMenu() {
         setDishes(Array.isArray(r.data) ? r.data : r.data?.dishes || [])
       })
       .catch((e) => setError(e?.response?.data?.message || e.message || 'Failed to load dishes'))
-      .finally(() => setLoading(false))
+      .finally(() => {
+        if (mounted) setLoading(false)
+      })
     return () => {
       mounted = false
     }
   }, [navigate, tableNo, user])
 
+  const searchLower = search.trim().toLowerCase()
+  const filtered = useMemo(() => {
+    if (!searchLower) return dishes
+    return dishes.filter((d) => String(d.name || '').toLowerCase().includes(searchLower))
+  }, [dishes, searchLower])
+
+  const grouped = useMemo(() => groupByCategory(filtered), [filtered])
+  const categoryNames = useMemo(() => grouped.map((g) => g.name), [grouped])
+
   const cartCount = useMemo(() => cart.reduce((sum, i) => sum + (Number(i.qty) || 0), 0), [cart])
-  const total = useMemo(() => cart.reduce((sum, i) => sum + (Number(i.qty) || 0) * (Number(i.dish?.price) || 0), 0), [cart])
+  const total = useMemo(
+    () => cart.reduce((sum, i) => sum + (Number(i.qty) || 0) * (Number(i.dish?.price) || 0), 0),
+    [cart]
+  )
   const dishIdsExpanded = useMemo(() => {
     return cart.flatMap((i) => {
       const id = i.dish?.dishId || i.dish?._id
@@ -49,26 +93,9 @@ export default function KioskMenu() {
   }, [cart])
 
   useEffect(() => {
-    const onResize = () => setViewportWidth(window.innerWidth)
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [])
-
-  const dishesPerRow = useMemo(() => {
-    if (viewportWidth < 640) return 2
-    if (viewportWidth < 1024) return 3
-    if (viewportWidth < 1280) return 4
-    return 5
-  }, [viewportWidth])
-  const rowsPerPage = 2
-  const pageSize = dishesPerRow * rowsPerPage
-  const dishPages = useMemo(() => {
-    const pages = []
-    for (let i = 0; i < dishes.length; i += pageSize) {
-      pages.push(dishes.slice(i, i + pageSize))
-    }
-    return pages.length ? pages : [[]]
-  }, [dishes])
+    if (!categoryNames.length) return
+    if (focusCategory == null) setFocusCategory('__all__')
+  }, [categoryNames, focusCategory])
 
   function getQty(dish) {
     const idKey = dish.dishId || dish._id
@@ -94,12 +121,22 @@ export default function KioskMenu() {
 
   return (
     <KioskShell className="relative">
-      <div className="px-4 sm:px-5 pt-6 sm:pt-8 pb-6 max-w-[1600px] mx-auto">
-        <div className="flex items-end justify-between gap-4 mb-4">
-          <div>
+      <div id="kiosk-menu-top" className="px-4 sm:px-5 pt-6 sm:pt-8 pb-6 max-w-[1600px] mx-auto">
+        <div className="mb-3">
+          <KioskBackButton
+            onBack={() => navigate('/register', { replace: true, state: { from: '/menu' } })}
+          >
+            Your details
+          </KioskBackButton>
+          <div className="mt-3">
             <p className="text-white/70 text-sm">Step 3 of 5</p>
             <h1 className="text-3xl sm:text-4xl font-extrabold mt-1 leading-none tracking-tight">Menu</h1>
-            <p className="mt-2 text-lg sm:text-2xl leading-none text-white/70">Table #{tableNo}</p>
+            <p className="mt-2 text-lg sm:text-2xl leading-none text-white/70">
+              Table #{tableNo}
+              {dishes.length > 0 ? (
+                <span className="text-white/50 text-base sm:text-lg font-normal"> · {filtered.length} items</span>
+              ) : null}
+            </p>
           </div>
           <button
             onClick={() => navigate('/register', { state: { from: '/menu' } })}
@@ -109,75 +146,156 @@ export default function KioskMenu() {
           </button>
         </div>
 
-        {loading ? <p className="mt-8 text-white/60">Loading dishes…</p> : null}
-        {error ? <p className="mt-8 text-red-300">{error}</p> : null}
+        {loading ? <p className="mt-4 text-white/60">Loading dishes…</p> : null}
+        {error ? <p className="mt-4 text-red-300">{error}</p> : null}
 
-        <div className="pb-28">
-          <div className="overflow-hidden" ref={emblaRef}>
-            <div className="flex">
-              {dishPages.map((page, pageIdx) => (
-                <div key={pageIdx} className="min-w-0 shrink-0 grow-0 basis-full pl-0">
-                  <div
-                    className="grid gap-3 sm:gap-4"
-                    style={{ gridTemplateColumns: `repeat(${dishesPerRow}, minmax(0, 1fr))` }}
+        {!loading && !error && (
+          <div className="mt-4 space-y-4">
+            <div>
+              <label className="sr-only" htmlFor="kiosk-menu-search">
+                Search menu
+              </label>
+              <div className="flex items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-3 py-2.5 sm:py-3">
+                <span className="text-white/50 text-lg" aria-hidden>
+                  🔍
+                </span>
+                <input
+                  id="kiosk-menu-search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search by dish name…"
+                  className="w-full min-w-0 bg-transparent text-sm sm:text-base text-white placeholder:text-white/40 outline-none"
+                />
+              </div>
+            </div>
+
+            {grouped.length === 0 ? (
+              <p className="text-white/60 py-6 text-center">
+                {search.trim() ? 'No dishes match your search.' : 'No dishes in the menu yet.'}
+              </p>
+            ) : (
+              <div
+                className="sticky top-0 z-30 -mx-4 sm:-mx-5 px-4 sm:px-5 py-2 bg-neutral-950/90 backdrop-blur-md border-b border-white/5"
+                style={{ top: 0 }}
+              >
+                <p className="text-xs text-white/50 uppercase tracking-wider mb-1.5">Categories</p>
+                <div
+                  ref={chipRowRef}
+                  className="flex gap-2 overflow-x-auto overflow-y-hidden pb-0.5 -mx-0.5 px-0.5 scroll-smooth [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5"
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFocusCategory('__all__')
+                      scrollCatIntoView('__top__')
+                    }}
+                    className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold border transition-colors ${
+                      focusCategory === '__all__'
+                        ? 'bg-white text-neutral-900 border-white'
+                        : 'bg-white/5 text-white/90 border-white/15 hover:bg-white/10'
+                    }`}
                   >
-                    {page.map((dish) => {
-                      const idKey = dish.dishId || dish._id
-                      const qty = getQty(dish)
-                      const ingredients = Array.isArray(dish.ingredients) ? dish.ingredients.slice(0, 3).join(', ') : ''
-                      return (
-                        <motion.div
-                          key={idKey}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.2, ease: 'easeOut' }}
-                          className="rounded-2xl overflow-hidden border border-white/10 bg-neutral-900/95"
-                        >
-                          <div className="h-28 sm:h-32 lg:h-36 bg-white/5">
-                            {dish.imageUrl ? (
-                              <img src={dish.imageUrl} alt={dish.name} className="h-full w-full object-cover" />
-                            ) : (
-                              <div className="h-full w-full bg-gradient-to-br from-white/10 to-white/0" />
-                            )}
-                          </div>
-                          <div className="p-3">
-                            <div className="flex items-start justify-between gap-2">
-                              <p className="text-sm sm:text-base font-bold leading-tight kiosk-clamp-2">{dish.name}</p>
-                              <p className="text-base sm:text-lg font-extrabold whitespace-nowrap">₹{dish.price}</p>
-                            </div>
-                            <p className="mt-1 text-xs text-white/65 kiosk-clamp-1">{ingredients}</p>
-                            <div className="mt-2 h-10 sm:h-10 rounded-xl border border-white/15 bg-black/35 flex items-center justify-between px-1.5">
-                              <button
-                                onClick={() => setQty(dish, Math.max(0, qty - 1))}
-                                className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white/10 hover:bg-white/15 transition text-xl leading-none"
-                              >
-                                −
-                              </button>
-                              <p className="font-extrabold text-lg sm:text-xl leading-none">{qty}</p>
-                              <button
-                                onClick={() => setQty(dish, qty + 1)}
-                                className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white/10 hover:bg-white/15 transition text-xl leading-none"
-                              >
-                                +
-                              </button>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )
-                    })}
-                    {Array.from({ length: Math.max(0, pageSize - page.length) }).map((_, idx) => (
-                      <div key={`empty-${pageIdx}-${idx}`} className="rounded-2xl border border-transparent bg-transparent" />
-                    ))}
-                  </div>
+                    All
+                  </button>
+                  {categoryNames.map((name, idx) => (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => {
+                        setFocusCategory(name)
+                        scrollCatIntoView(idx)
+                      }}
+                      className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium border max-w-[min(200px,70vw)] truncate transition-colors ${
+                        focusCategory === name
+                          ? 'bg-amber-500/90 text-neutral-900 border-amber-400/80'
+                          : 'bg-white/5 text-white/90 border-white/15 hover:bg-white/10'
+                      }`}
+                    >
+                      {name}
+                    </button>
+                  ))}
                 </div>
-              ))}
+              </div>
+            )}
+
+            <div className="space-y-8 pb-28">
+              {grouped.map(({ name, dishes: row }, idx) => {
+                return (
+                  <section
+                    key={name}
+                    id={`kiosk-cat-section-${idx}`}
+                    className="scroll-mt-32"
+                    aria-label={name}
+                  >
+                    <div className="flex items-baseline justify-between gap-2 mb-3">
+                      <h2 className="text-lg sm:text-xl font-extrabold text-white tracking-tight">{name}</h2>
+                      <span className="text-sm text-white/50">{row.length} items</span>
+                    </div>
+                    <div className="overflow-x-auto overflow-y-hidden -mx-4 sm:-mx-5 px-4 sm:px-5 pb-1 scroll-smooth snap-x snap-mandatory [scrollbar-width:thin]">
+                      <ul className="flex gap-3 w-max pr-1">
+                        {row.map((dish) => {
+                          const idKey = dish.dishId || dish._id
+                          const qty = getQty(dish)
+                          const ingredients = Array.isArray(dish.ingredients) ? dish.ingredients.slice(0, 3).join(', ') : ''
+                          return (
+                            <li key={idKey} className="snap-start shrink-0 w-[40vw] min-w-[156px] max-w-[200px] sm:min-w-[180px] sm:max-w-[220px]">
+                              <motion.div
+                                initial={{ opacity: 0, y: 6 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.15, ease: 'easeOut' }}
+                                className="h-full rounded-2xl overflow-hidden border border-white/10 bg-neutral-900/95 flex flex-col"
+                              >
+                                <div className="h-28 sm:h-32 lg:h-36 bg-white/5 shrink-0">
+                                  {dish.imageUrl ? (
+                                    <img
+                                      src={dish.imageUrl}
+                                      alt={dish.name}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="h-full w-full bg-gradient-to-br from-amber-500/15 to-white/5 flex items-end justify-end p-2">
+                                      <span className="text-[10px] text-white/40 font-medium">No image</span>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="p-3 flex flex-col flex-1 min-h-0">
+                                  <p className="text-sm sm:text-base font-bold leading-tight line-clamp-2">{dish.name}</p>
+                                  <p className="text-xs text-white/55 line-clamp-1 mt-0.5 min-h-4">{ingredients || '\u00a0'}</p>
+                                  <p className="text-base sm:text-lg font-extrabold mt-auto pt-2">₹{dish.price}</p>
+                                  <div className="mt-2 h-10 sm:h-10 rounded-xl border border-white/15 bg-black/35 flex items-center justify-between px-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => setQty(dish, Math.max(0, qty - 1))}
+                                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white/10 hover:bg-white/15 transition text-xl leading-none"
+                                    >
+                                      −
+                                    </button>
+                                    <p className="font-extrabold text-lg sm:text-xl leading-none">{qty}</p>
+                                    <button
+                                      type="button"
+                                      onClick={() => setQty(dish, qty + 1)}
+                                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white/10 hover:bg-white/15 transition text-xl leading-none"
+                                    >
+                                      +
+                                    </button>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    </div>
+                  </section>
+                )
+              })}
             </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Floating cart button */}
       <button
+        type="button"
         onClick={() => setDrawerOpen(true)}
         className="fixed bottom-4 sm:bottom-6 right-4 sm:right-5 z-40 h-12 sm:h-14 px-4 sm:px-5 rounded-2xl bg-white text-neutral-900 font-extrabold shadow-xl hover:bg-white/90 transition flex items-center gap-2 sm:gap-3"
       >
@@ -195,7 +313,7 @@ export default function KioskMenu() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <div className="absolute inset-0 bg-black/70" onClick={() => setDrawerOpen(false)} />
+            <div className="absolute inset-0 bg-black/70" onClick={() => setDrawerOpen(false)} role="presentation" />
             <motion.div
               className="relative w-full max-w-3xl rounded-t-3xl border border-white/10 bg-neutral-950 p-6 pb-8"
               initial={{ y: 40 }}
@@ -205,7 +323,11 @@ export default function KioskMenu() {
             >
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-extrabold">Your cart</h2>
-                <button className="text-sm text-white/70 hover:text-white" onClick={() => setDrawerOpen(false)}>
+                <button
+                  type="button"
+                  className="text-sm text-white/70 hover:text-white"
+                  onClick={() => setDrawerOpen(false)}
+                >
                   Close
                 </button>
               </div>
@@ -216,17 +338,28 @@ export default function KioskMenu() {
                     const idKey = i.dish?.dishId || i.dish?._id
                     const qty = Number(i.qty) || 0
                     return (
-                      <div key={idKey} className="rounded-2xl border border-white/10 bg-white/5 p-4 flex items-center justify-between gap-4">
+                      <div
+                        key={idKey}
+                        className="rounded-2xl border border-white/10 bg-white/5 p-4 flex items-center justify-between gap-4"
+                      >
                         <div className="min-w-0">
                           <p className="font-semibold truncate">{i.dish?.name}</p>
                           <p className="text-xs text-white/60 mt-1">₹{i.dish?.price} each</p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <button onClick={() => setQty(i.dish, qty - 1)} className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/15 transition text-xl">
+                          <button
+                            type="button"
+                            onClick={() => setQty(i.dish, qty - 1)}
+                            className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/15 transition text-xl"
+                          >
                             −
                           </button>
                           <span className="w-10 text-center font-extrabold">{qty}</span>
-                          <button onClick={() => setQty(i.dish, qty + 1)} className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/15 transition text-xl">
+                          <button
+                            type="button"
+                            onClick={() => setQty(i.dish, qty + 1)}
+                            className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/15 transition text-xl"
+                          >
                             +
                           </button>
                         </div>
@@ -260,11 +393,14 @@ export default function KioskMenu() {
               </div>
 
               <button
+                type="button"
                 onClick={placeOrder}
                 disabled={!cartCount || placing}
                 className="mt-4 w-full h-14 rounded-2xl bg-white text-neutral-900 font-extrabold hover:bg-white/90 disabled:opacity-50 transition flex items-center justify-center gap-2"
               >
-                {placing ? <span className="inline-block w-4 h-4 rounded-full border-2 border-neutral-900/30 border-t-neutral-900 animate-spin" /> : null}
+                {placing ? (
+                  <span className="inline-block w-4 h-4 rounded-full border-2 border-neutral-900/30 border-t-neutral-900 animate-spin" />
+                ) : null}
                 Pay via UPI
               </button>
             </motion.div>
@@ -274,4 +410,3 @@ export default function KioskMenu() {
     </KioskShell>
   )
 }
-

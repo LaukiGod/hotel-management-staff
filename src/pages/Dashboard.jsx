@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { useAuth } from '../context/AuthContext'
+import AdminPanelHeader from '../components/AdminPanelHeader'
 
 export default function Dashboard() {
   const { user } = useAuth()
@@ -11,43 +12,55 @@ export default function Dashboard() {
   const [metrics, setMetrics] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [t, o, a] = await Promise.all([
-          api.get('/restaurant/tables'),
-          api.get('/restaurant/orders'),
-          api.get('/restaurant/alerts'),
-        ])
-        setTables(t)
-        setOrders(o)
-        setAlerts(a)
-        const n = await api.get('/restaurant/notifications')
-        setNotifications(n)
-        if (user?.role === 'ADMIN') {
-          const m = await api.get('/restaurant/metrics')
-          setMetrics(m)
-        }
-      } catch (e) {
-        console.error(e)
-      } finally {
-        setLoading(false)
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [t, o, a] = await Promise.all([
+        api.get('/restaurant/tables'),
+        api.get('/restaurant/orders'),
+        api.get('/restaurant/alerts'),
+      ])
+      setTables(t)
+      setOrders(o)
+      setAlerts(a)
+      const n = await api.get('/restaurant/notifications')
+      setNotifications(n)
+      if (user?.role === 'ADMIN') {
+        const m = await api.get('/restaurant/metrics')
+        setMetrics(m)
+      } else {
+        setMetrics(null)
       }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
     }
+  }, [user?.role])
+
+  useEffect(() => {
     load()
-  }, [])
+  }, [load])
 
   const activeTables = tables.filter(t => t.status === 'occupied').length
   const pendingOrders = orders.filter(o => ['created', 'paid', 'preparing'].includes(o.status)).length
 
-  if (loading) return <p className="p-6 text-gray-500">Loading...</p>
-
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">
-        Welcome, {user?.name}
-      </h1>
-      <p className="text-gray-500 text-sm mb-6">Here's what's happening right now.</p>
+    <div className="flex min-h-full min-w-0 flex-1 flex-col">
+      <AdminPanelHeader
+        title="Dashboard"
+        subtitle="Here's what's happening right now."
+        actionLabel="Refresh"
+        onAction={load}
+        actionDisabled={loading}
+      />
+      {loading ? (
+        <p className="p-4 text-gray-500 sm:p-6">Loading…</p>
+      ) : (
+    <div className="p-4 sm:p-6">
+      <p className="mb-6 text-sm text-gray-600">
+        <span className="font-medium text-gray-900">Welcome{user?.name ? `, ${user.name}` : ''}.</span>
+      </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <Card label="Occupied Tables" value={activeTables} color="bg-blue-50 text-blue-700" />
@@ -86,6 +99,8 @@ export default function Dashboard() {
             ))}
           </ul>
         </div>
+      )}
+    </div>
       )}
     </div>
   )

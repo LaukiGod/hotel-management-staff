@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
+import AdminPanelHeader from '../components/AdminPanelHeader'
 
 export default function Alerts() {
   const [alerts, setAlerts] = useState([])
@@ -24,12 +25,24 @@ export default function Alerts() {
     return () => clearInterval(interval)
   }, [])
 
-  if (loading) return <p className="p-6 text-gray-500">Loading...</p>
-  if (error) return <p className="p-6 text-red-500">{error}</p>
+  useEffect(() => {
+    load()
+  }, [load])
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Allergy Alerts</h1>
+    <div className="flex min-h-full min-w-0 flex-1 flex-col">
+      <AdminPanelHeader
+        title="Allergy alerts"
+        actionLabel="Refresh"
+        onAction={load}
+        actionDisabled={loading}
+      />
+      {loading ? (
+        <p className="p-4 text-gray-500 sm:p-6">Loading…</p>
+      ) : error ? (
+        <p className="p-4 text-red-500 sm:p-6">{error}</p>
+      ) : (
+    <div className="p-4 sm:p-6">
       {alerts.length === 0 ? (
         <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
           <p className="text-green-700 font-medium">No active allergy alerts</p>
@@ -55,6 +68,8 @@ export default function Alerts() {
             </div>
           ))}
         </div>
+      )}
+    </div>
       )}
     </div>
   )

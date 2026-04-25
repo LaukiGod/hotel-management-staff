@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { useAuth } from '../context/AuthContext'
+import AdminPanelHeader from '../components/AdminPanelHeader'
 
 function getRowClass(item) {
   const now = new Date()
@@ -33,11 +34,12 @@ export default function Inventory() {
   useEffect(() => { load() }, [])
 
   async function load() {
+    setLoading(true)
+    setError('')
     try {
       const data = await api.get('/restaurant/inventory')
       const normalizedItems = Array.isArray(data) ? data : data?.items
       setItems(Array.isArray(normalizedItems) ? normalizedItems : [])
-      setError('')
     } catch (e) {
       setError(e.message)
       setItems([])
@@ -111,22 +113,31 @@ export default function Inventory() {
     }
   }
 
-  if (loading) return <p className="p-6 text-gray-500">Loading...</p>
-  if (error) return <p className="p-6 text-red-500">{error}</p>
+  if (error && !loading) {
+    return (
+      <div className="flex min-h-full min-w-0 flex-1 flex-col">
+        <AdminPanelHeader
+          title="Inventory"
+          actionLabel={isAdmin ? 'Add item' : 'Refresh'}
+          onAction={isAdmin ? openAdd : load}
+        />
+        <p className="p-4 text-red-500 sm:p-6">{error}</p>
+      </div>
+    )
+  }
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Inventory</h1>
-        {isAdmin && (
-          <button
-            onClick={openAdd}
-            className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-700 transition-colors"
-          >
-            + Add Item
-          </button>
-        )}
-      </div>
+    <div className="flex min-h-full min-w-0 flex-1 flex-col">
+      <AdminPanelHeader
+        title="Inventory"
+        actionLabel={isAdmin ? 'Add item' : 'Refresh'}
+        onAction={isAdmin ? openAdd : load}
+        actionDisabled={loading}
+      />
+      {loading ? (
+        <p className="p-4 text-gray-500 sm:p-6">Loading…</p>
+      ) : (
+    <div className="p-4 sm:p-6">
 
       <div className="mb-4 flex gap-4 text-xs">
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-100 inline-block" /> Expired</span>
@@ -195,6 +206,8 @@ export default function Inventory() {
             </div>
           </form>
         </div>
+      )}
+    </div>
       )}
     </div>
   )

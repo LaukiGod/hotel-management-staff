@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
+import AdminPanelHeader from '../components/AdminPanelHeader'
 
 const EMPTY_FORM = { name: '', price: '', ingredients: '', recipe: '', imageUrl: '', category: '' }
 
@@ -79,21 +80,32 @@ export default function Menu() {
     }
   }
 
-  if (loading) return <p className="p-6 text-gray-500">Loading...</p>
-  if (error) return <p className="p-6 text-red-500">{error}</p>
+  if (error) {
+    return (
+      <div className="flex min-h-full min-w-0 flex-1 flex-col">
+        <AdminPanelHeader
+          title="Menu"
+          badge="ADMIN"
+          actionLabel="Add dish"
+          onAction={openAdd}
+        />
+        <p className="p-4 text-red-500 sm:p-6">{error}</p>
+      </div>
+    )
+  }
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Menu</h1>
-        <button
-          onClick={openAdd}
-          className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-700 transition-colors"
-        >
-          + Add Dish
-        </button>
-      </div>
-
+    <div className="flex min-h-full min-w-0 flex-1 flex-col">
+      <AdminPanelHeader
+        title="Menu"
+        badge="ADMIN"
+        actionLabel="Add dish"
+        onAction={openAdd}
+      />
+      {loading ? (
+        <p className="p-4 text-gray-500 sm:p-6">Loading…</p>
+      ) : (
+    <div className="p-4 sm:p-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {dishes.length === 0 && <p className="text-gray-400 col-span-full">No dishes yet.</p>}
         {dishes.map(dish => (
@@ -128,7 +140,7 @@ export default function Menu() {
               <Field label="Price *" type="number" value={form.price} onChange={v => setForm(f => ({ ...f, price: v }))} />
               <Field label="Category / Type *" value={form.category} onChange={v => setForm(f => ({ ...f, category: v }))} />
               <Field label="Ingredients (comma separated)" value={form.ingredients} onChange={v => setForm(f => ({ ...f, ingredients: v }))} />
-              <Field label="Recipe *" textarea value={form.recipe} onChange={v => setForm(f => ({ ...f, recipe: v }))} />
+              <Field label="Recipe" textarea value={form.recipe} onChange={v => setForm(f => ({ ...f, recipe: v }))} />
               <Field label="Image URL" value={form.imageUrl} onChange={v => setForm(f => ({ ...f, imageUrl: v }))} />
             </div>
             <div className="flex gap-3 mt-6">
@@ -139,6 +151,8 @@ export default function Menu() {
             </div>
           </div>
         </div>
+      )}
+    </div>
       )}
     </div>
   )

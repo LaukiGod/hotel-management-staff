@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import StatusBadge from '../components/StatusBadge'
 import AllergyBadge from '../components/AllergyBadge'
+import AdminPanelHeader from '../components/AdminPanelHeader'
 
 const STATUSES = ['created', 'paid', 'preparing', 'served', 'completed']
 
@@ -206,9 +207,6 @@ export default function Orders() {
     }
   }
 
-  if (loading) return <p className="p-6 text-gray-500">Loading...</p>
-  if (error) return <p className="p-6 text-red-500">{error}</p>
-
   function getDishName(d) {
     return typeof d === 'string' ? d : d?.name
   }
@@ -233,16 +231,19 @@ export default function Orders() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between gap-4 mb-6">
-        <h1 className="text-2xl font-bold">Orders</h1>
-        <button
-          onClick={openAdd}
-          className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm hover:bg-gray-700 transition-colors"
-        >
-          + Add Order
-        </button>
-      </div>
+    <div className="flex min-h-full min-w-0 flex-1 flex-col">
+      <AdminPanelHeader
+        title="Orders"
+        actionLabel="Add order"
+        onAction={openAdd}
+        actionDisabled={!!creating}
+      />
+      {loading ? (
+        <p className="p-4 text-gray-500 sm:p-6">Loading…</p>
+      ) : error ? (
+        <p className="p-4 text-red-500 sm:p-6">{error}</p>
+      ) : (
+    <div className="p-4 sm:p-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {orders.length === 0 && (
           <p className="text-gray-400">No orders yet.</p>
@@ -526,6 +527,8 @@ export default function Orders() {
             </div>
           </div>
         </div>
+      )}
+    </div>
       )}
     </div>
   )

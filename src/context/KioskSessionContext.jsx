@@ -27,8 +27,17 @@ function loadInitial() {
               allergies: Array.isArray(parsed.detailsDraft.allergies) ? parsed.detailsDraft.allergies : [],
             }
           : { name: '', phoneNo: '', allergies: [] },
+        kioskPath: typeof parsed.kioskPath === 'string' ? parsed.kioskPath : null,
       }
-    : { tableNo: null, user: null, cart: [], orderId: null, allergies: [], detailsDraft: { name: '', phoneNo: '', allergies: [] } }
+    : {
+        tableNo: null,
+        user: null,
+        cart: [],
+        orderId: null,
+        allergies: [],
+        detailsDraft: { name: '', phoneNo: '', allergies: [] },
+        kioskPath: null,
+      }
 }
 
 const KioskSessionContext = createContext(null)
@@ -77,6 +86,11 @@ export function KioskSessionProvider({ children }) {
       persist((prev) => ({ ...prev, cart }))
     }
 
+    function setKioskPath(kioskPath) {
+      const next = kioskPath == null || kioskPath === '' ? null : String(kioskPath)
+      persist((prev) => ({ ...prev, kioskPath: next }))
+    }
+
     function setQty(dish, qty) {
       const nextQty = Math.max(0, Number(qty) || 0)
       const idKey = dish?.dishId || dish?._id
@@ -89,7 +103,15 @@ export function KioskSessionProvider({ children }) {
     }
 
     function resetSession() {
-      const next = { tableNo: null, user: null, cart: [], orderId: null, allergies: [], detailsDraft: { name: '', phoneNo: '', allergies: [] } }
+      const next = {
+        tableNo: null,
+        user: null,
+        cart: [],
+        orderId: null,
+        allergies: [],
+        detailsDraft: { name: '', phoneNo: '', allergies: [] },
+        kioskPath: null,
+      }
       setState(next)
       localStorage.removeItem(STORAGE_KEY)
     }
@@ -102,6 +124,16 @@ export function KioskSessionProvider({ children }) {
         orderId: null,
         allergies: [],
         detailsDraft: prev.detailsDraft || { name: '', phoneNo: '', allergies: [] },
+        kioskPath: null,
+      }))
+    }
+
+    function resetForNewOrder() {
+      // Keep table and customer identity for quick repeat ordering.
+      persist((prev) => ({
+        ...prev,
+        cart: [],
+        orderId: null,
       }))
     }
 
@@ -114,8 +146,10 @@ export function KioskSessionProvider({ children }) {
       setDetailsDraft,
       setQty,
       setCart,
+      setKioskPath,
       resetSession,
       resetForTableChange,
+      resetForNewOrder,
     }
   }, [state])
 

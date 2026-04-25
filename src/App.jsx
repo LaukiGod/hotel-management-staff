@@ -1,9 +1,10 @@
+import { useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import RoleRoute from './components/RoleRoute'
 import Navbar from './components/Navbar'
-import { KioskSessionProvider } from './context/KioskSessionContext'
+import { KioskSessionProvider, useKioskSession } from './context/KioskSessionContext'
 import { AnimatePresence } from 'framer-motion'
 
 import Login from './pages/Login'
@@ -25,6 +26,25 @@ import KioskMenu from './pages/kiosk/Menu'
 import KioskPayment from './pages/kiosk/Payment'
 import KioskOrderSuccess from './pages/kiosk/OrderSuccess'
 
+const KIOSK_PERSISTED_PATHS = new Set(['/tables', '/register', '/menu', '/payment', '/order-success'])
+
+/**
+ * Persists the current kiosk step so a return to the app root can restore it (see `getKioskResumePath` + `Welcome`).
+ */
+function KioskPathSync() {
+  const { setKioskPath } = useKioskSession()
+  const setKioskPathRef = useRef(setKioskPath)
+  setKioskPathRef.current = setKioskPath
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    if (KIOSK_PERSISTED_PATHS.has(pathname)) {
+      setKioskPathRef.current(pathname)
+    }
+  }, [pathname])
+  return null
+}
+
 function AppLayout() {
   return (
     <div className="flex min-h-screen">
@@ -40,8 +60,10 @@ function AnimatedRoutes() {
   const location = useLocation()
 
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
+    <>
+      <KioskPathSync />
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
         {/* Kiosk ordering flow */}
         <Route path="/" element={<KioskWelcome />} />
         <Route path="/tables" element={<KioskTables />} />
@@ -75,8 +97,9 @@ function AnimatedRoutes() {
 
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </AnimatePresence>
+        </Routes>
+      </AnimatePresence>
+    </>
   )
 }
 

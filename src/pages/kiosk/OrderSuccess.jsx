@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { kioskAxios } from '../../api/kioskAxios'
+import { KioskBackButton } from '../../components/kiosk/KioskBackButton'
 import KioskShell from '../../components/KioskShell'
 import { useKioskSession } from '../../context/KioskSessionContext'
 
 export default function KioskOrderSuccess() {
   const navigate = useNavigate()
-  const { tableNo, cart, orderId, resetSession } = useKioskSession()
+  const { tableNo, cart, orderId, resetForNewOrder } = useKioskSession()
   const [rating, setRating] = useState(0)
   const [comment, setComment] = useState('')
   const [reviewSaving, setReviewSaving] = useState(false)
@@ -55,15 +56,18 @@ export default function KioskOrderSuccess() {
   }
 
   function newOrder() {
-    resetSession()
-    navigate('/', { replace: true })
+    resetForNewOrder()
+    navigate('/menu', { replace: true })
   }
 
   return (
     <KioskShell>
       <div className="min-h-screen w-full flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-3xl rounded-3xl border border-white/10 bg-white/5 backdrop-blur p-8">
-          <p className="text-white/70 text-sm">Step 5 of 5</p>
+          <KioskBackButton to="/payment" replace>
+            Payment
+          </KioskBackButton>
+          <p className="text-white/70 text-sm mt-3">Step 5 of 5</p>
           <div className="mt-2 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div>
               <h1 className="text-3xl md:text-4xl font-extrabold">Order placed</h1>

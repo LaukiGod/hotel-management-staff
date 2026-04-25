@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { kioskAxios } from '../../api/kioskAxios'
+import { KioskBackButton } from '../../components/kiosk/KioskBackButton'
 import KioskShell from '../../components/KioskShell'
 import { useKioskSession } from '../../context/KioskSessionContext'
 
@@ -9,7 +10,17 @@ const PRESET_ALLERGIES = ['nuts', 'gluten', 'dairy', 'shellfish', 'eggs', 'soy',
 export default function KioskRegister() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { tableNo, user, allergies: sessionAllergies, detailsDraft, setUser, setAllergies, setDetailsDraft, resetForTableChange } = useKioskSession()
+  const {
+    tableNo,
+    user,
+    allergies: sessionAllergies,
+    detailsDraft,
+    setUser,
+    setAllergies,
+    setDetailsDraft,
+    setTableNo,
+    resetForTableChange,
+  } = useKioskSession()
   const [name, setName] = useState(() => String(user?.name || detailsDraft?.name || ''))
   const [phoneNo, setPhoneNo] = useState(() => String(user?.phoneNo || detailsDraft?.phoneNo || ''))
   const [allergyInput, setAllergyInput] = useState('')
@@ -29,6 +40,15 @@ export default function KioskRegister() {
   }, [navigate, tableNo])
 
   const cancelTo = location.state?.from || '/tables'
+
+  function goBack() {
+    if (cancelTo === '/menu') {
+      navigate('/menu', { replace: true })
+    } else {
+      setTableNo(null)
+      navigate('/tables', { replace: true })
+    }
+  }
 
   useEffect(() => {
     setDetailsDraft({ name, phoneNo, allergies })
@@ -102,7 +122,8 @@ export default function KioskRegister() {
     <KioskShell>
       <div className="min-h-screen w-full flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-white/5 backdrop-blur p-7">
-          <p className="text-white/70 text-sm">Step 2 of 5</p>
+          <KioskBackButton onBack={goBack}>{cancelTo === '/menu' ? 'Menu' : 'Table selection'}</KioskBackButton>
+          <p className="text-white/70 text-sm mt-3">Step 2 of 5</p>
           <h1 className="text-3xl font-extrabold mt-1">Your details</h1>
           <p className="mt-2 text-white/70 text-sm">Table #{tableNo} is pre-selected.</p>
 

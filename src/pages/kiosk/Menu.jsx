@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import useEmblaCarousel from 'embla-carousel-react'
 import { kioskAxios } from '../../api/kioskAxios'
+import { KioskBackButton } from '../../components/kiosk/KioskBackButton'
 import KioskShell from '../../components/KioskShell'
 import { useKioskSession } from '../../context/KioskSessionContext'
 
@@ -95,18 +96,17 @@ export default function KioskMenu() {
   return (
     <KioskShell className="relative">
       <div className="px-4 sm:px-5 pt-6 sm:pt-8 pb-6 max-w-[1600px] mx-auto">
-        <div className="flex items-end justify-between gap-4 mb-4">
-          <div>
+        <div className="mb-4">
+          <KioskBackButton
+            onBack={() => navigate('/register', { replace: true, state: { from: '/menu' } })}
+          >
+            Your details
+          </KioskBackButton>
+          <div className="mt-3">
             <p className="text-white/70 text-sm">Step 3 of 5</p>
             <h1 className="text-3xl sm:text-4xl font-extrabold mt-1 leading-none tracking-tight">Menu</h1>
             <p className="mt-2 text-lg sm:text-2xl leading-none text-white/70">Table #{tableNo}</p>
           </div>
-          <button
-            onClick={() => navigate('/register', { state: { from: '/menu' } })}
-            className="text-sm sm:text-xl leading-none text-white/70 hover:text-white transition-colors"
-          >
-            Edit details
-          </button>
         </div>
 
         {loading ? <p className="mt-8 text-white/60">Loading dishes…</p> : null}

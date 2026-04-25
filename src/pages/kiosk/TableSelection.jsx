@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { kioskAxios } from '../../api/kioskAxios'
+import { KioskBackButton } from '../../components/kiosk/KioskBackButton'
 import KioskShell from '../../components/KioskShell'
 import { useKioskSession } from '../../context/KioskSessionContext'
 
@@ -20,7 +21,11 @@ function statusLabel(s) {
 
 export default function KioskTableSelection() {
   const navigate = useNavigate()
-  const { setTableNo } = useKioskSession()
+  const { setTableNo, resetSession } = useKioskSession()
+  function startOver() {
+    resetSession()
+    navigate('/', { replace: true })
+  }
   const [tables, setTables] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -58,17 +63,19 @@ export default function KioskTableSelection() {
   return (
     <KioskShell className="relative">
       <div className="px-6 py-8 max-w-6xl mx-auto">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <p className="text-white/70 text-sm">Step 1 of 5</p>
-            <h1 className="text-3xl md:text-4xl font-extrabold mt-1">Select your table</h1>
-          </div>
+        <div className="mb-1 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <KioskBackButton onBack={() => navigate('/', { state: { kioskIntent: 'showWelcome' } })}>Welcome</KioskBackButton>
           <button
-            onClick={() => navigate('/')}
-            className="text-sm text-white/70 hover:text-white transition-colors"
+            type="button"
+            onClick={startOver}
+            className="self-start sm:self-center text-sm text-rose-200/90 hover:text-rose-100 transition-colors rounded-xl px-2 py-1.5 -mr-1"
           >
-            Back to welcome
+            Start over
           </button>
+        </div>
+        <div>
+          <p className="text-white/70 text-sm">Step 1 of 5</p>
+          <h1 className="text-3xl md:text-4xl font-extrabold mt-1">Select your table</h1>
         </div>
 
         {loading ? <p className="mt-8 text-white/60">Loading tables…</p> : null}
@@ -101,12 +108,6 @@ export default function KioskTableSelection() {
                 <div className="mt-4 flex items-center justify-between">
                   <TableIcon className="w-10 h-10 text-white/70" />
                   <div className="flex items-center gap-2">
-                    {t.allergyAlert ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-amber-500/15 text-amber-200 border border-amber-400/25">
-                        <span className="text-base leading-none">⚠</span>
-                        Allergy
-                      </span>
-                    ) : null}
                     {t.waiterRequested ? (
                       <span className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-pink-500/15 text-pink-200 border border-pink-400/25">
                         Waiter

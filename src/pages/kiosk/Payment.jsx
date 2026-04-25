@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { kioskAxios } from '../../api/kioskAxios'
+import { KioskBackButton } from '../../components/kiosk/KioskBackButton'
 import KioskShell from '../../components/KioskShell'
 import { useKioskSession } from '../../context/KioskSessionContext'
 
@@ -8,7 +9,7 @@ const PAYMENT_WINDOW_MS = 10 * 60 * 1000
 
 export default function KioskPayment() {
   const navigate = useNavigate()
-  const { orderId, tableNo } = useKioskSession()
+  const { orderId, tableNo, setOrderId } = useKioskSession()
   const [utr, setUtr] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -63,7 +64,15 @@ export default function KioskPayment() {
     <KioskShell>
       <div className="min-h-screen w-full flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-xl rounded-3xl border border-white/10 bg-white/5 backdrop-blur p-7">
-          <p className="text-white/70 text-sm">Step 4 of 5</p>
+          <KioskBackButton
+            onBack={() => {
+              setOrderId(null)
+              navigate('/menu', { replace: true })
+            }}
+          >
+            Menu
+          </KioskBackButton>
+          <p className="text-white/70 text-sm mt-3">Step 4 of 5</p>
           <h1 className="text-3xl font-extrabold mt-1">Pay via UPI</h1>
           <p className="mt-2 text-sm text-white/70">
             Table #{tableNo} • Payment window: <span className="font-semibold text-white">{remainingText}</span>

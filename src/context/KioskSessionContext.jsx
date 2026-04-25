@@ -20,8 +20,15 @@ function loadInitial() {
         cart: Array.isArray(parsed.cart) ? parsed.cart : [],
         orderId: parsed.orderId ?? null,
         allergies: Array.isArray(parsed.allergies) ? parsed.allergies : [],
+        detailsDraft: parsed.detailsDraft && typeof parsed.detailsDraft === 'object'
+          ? {
+              name: String(parsed.detailsDraft.name || ''),
+              phoneNo: String(parsed.detailsDraft.phoneNo || ''),
+              allergies: Array.isArray(parsed.detailsDraft.allergies) ? parsed.detailsDraft.allergies : [],
+            }
+          : { name: '', phoneNo: '', allergies: [] },
       }
-    : { tableNo: null, user: null, cart: [], orderId: null, allergies: [] }
+    : { tableNo: null, user: null, cart: [], orderId: null, allergies: [], detailsDraft: { name: '', phoneNo: '', allergies: [] } }
 }
 
 const KioskSessionContext = createContext(null)
@@ -54,6 +61,18 @@ export function KioskSessionProvider({ children }) {
       persist((prev) => ({ ...prev, orderId }))
     }
 
+    function setDetailsDraft(detailsDraft) {
+      const next = detailsDraft && typeof detailsDraft === 'object' ? detailsDraft : {}
+      persist((prev) => ({
+        ...prev,
+        detailsDraft: {
+          name: String(next.name ?? prev.detailsDraft?.name ?? ''),
+          phoneNo: String(next.phoneNo ?? prev.detailsDraft?.phoneNo ?? ''),
+          allergies: Array.isArray(next.allergies) ? next.allergies : (prev.detailsDraft?.allergies || []),
+        },
+      }))
+    }
+
     function setCart(cart) {
       persist((prev) => ({ ...prev, cart }))
     }
@@ -70,9 +89,20 @@ export function KioskSessionProvider({ children }) {
     }
 
     function resetSession() {
-      const next = { tableNo: null, user: null, cart: [], orderId: null, allergies: [] }
+      const next = { tableNo: null, user: null, cart: [], orderId: null, allergies: [], detailsDraft: { name: '', phoneNo: '', allergies: [] } }
       setState(next)
       localStorage.removeItem(STORAGE_KEY)
+    }
+
+    function resetForTableChange() {
+      persist((prev) => ({
+        tableNo: null,
+        user: null,
+        cart: [],
+        orderId: null,
+        allergies: [],
+        detailsDraft: prev.detailsDraft || { name: '', phoneNo: '', allergies: [] },
+      }))
     }
 
     return {
@@ -81,9 +111,11 @@ export function KioskSessionProvider({ children }) {
       setUser,
       setAllergies,
       setOrderId,
+      setDetailsDraft,
       setQty,
       setCart,
       resetSession,
+      resetForTableChange,
     }
   }, [state])
 

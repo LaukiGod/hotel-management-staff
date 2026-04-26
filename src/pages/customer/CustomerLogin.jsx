@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../../api/client'
-import { getCustomerSession, setCustomerSession } from './customerSession'
+import { clearCustomerSession, getCustomerSession, setCustomerSession } from './customerSession'
+import { sessionMatchesTableUser, tableHasOpenCustomerTicket } from './customerOrderUtils'
 
 export default function CustomerLogin() {
   const navigate = useNavigate()
@@ -11,11 +12,43 @@ export default function CustomerLogin() {
   const [phoneNo, setPhoneNo] = useState('')
   const [tableNo, setTableNo] = useState(tableIdFromQR)
   const [loading, setLoading] = useState(false)
+  const [restoring, setRestoring] = useState(() => Boolean(getCustomerSession()?.tableNo))
 
   useEffect(() => {
-    const existing = getCustomerSession()
-    if (existing?.tableNo) {
-      navigate('/customer/menu', { replace: true })
+    let cancelled = false
+
+    async function restoreSession() {
+      const existing = getCustomerSession()
+      if (!existing?.tableNo) {
+        setRestoring(false)
+        return
+      }
+      try {
+        const ts = await api.get(`/user/table-session/${existing.tableNo}`)
+        if (cancelled) return
+        if (!ts?.valid || !sessionMatchesTableUser(existing, ts)) {
+          clearCustomerSession()
+          return
+        }
+        const orders = await api.get(`/user/orders/${existing.tableNo}`)
+        let path = existing.resumePath
+        if (path !== '/customer/menu' && path !== '/customer/track') path = null
+        if (!path) {
+          path = tableHasOpenCustomerTicket(orders) ? '/customer/track' : '/customer/menu'
+        } else if (path === '/customer/track' && !tableHasOpenCustomerTicket(orders)) {
+          path = '/customer/menu'
+        }
+        navigate(path, { replace: true })
+      } catch {
+        if (!cancelled) clearCustomerSession()
+      } finally {
+        if (!cancelled) setRestoring(false)
+      }
+    }
+
+    restoreSession()
+    return () => {
+      cancelled = true
     }
   }, [navigate])
 
@@ -28,10 +61,13 @@ export default function CustomerLogin() {
         name,
         phoneNo
       })
+      const u = result?.user
       setCustomerSession({
         tableNo: Number(tableNo),
-        name: result?.user?.name || name,
-        phoneNo: result?.user?.phoneNo || phoneNo
+        name: u?.name || name,
+        phoneNo: u?.phoneNo || phoneNo,
+        userId: u?._id != null ? String(u._id) : '',
+        resumePath: '/customer/menu'
       })
       navigate('/customer/menu')
     } catch (err) {
@@ -39,6 +75,14 @@ export default function CustomerLogin() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (restoring) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center px-4">
+        <p className="text-sm text-white/80">Restoring your table session…</p>
+      </div>
+    )
   }
 
   return (

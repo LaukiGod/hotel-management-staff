@@ -1,10 +1,12 @@
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../../api/client'
 import { clearCustomerSession, getCustomerSession } from './customerSession'
 
 export default function CustomerLayout({ title, children }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const session = getCustomerSession()
+  const onTrack = location.pathname === '/customer/track'
 
   async function callWaiter() {
     if (!session?.tableNo) return
@@ -29,9 +31,20 @@ export default function CustomerLayout({ title, children }) {
             <p className="text-lg font-semibold text-gray-900">{title}</p>
             <p className="text-xs text-gray-500">Table #{session?.tableNo || '-'}</p>
           </div>
-          <button onClick={exitSession} className="text-xs text-gray-500 hover:text-gray-800">
-            Exit
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {onTrack ? (
+              <button
+                type="button"
+                onClick={() => navigate('/customer/menu')}
+                className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-800 hover:bg-gray-50"
+              >
+                Back to menu
+              </button>
+            ) : null}
+            <button type="button" onClick={exitSession} className="text-xs text-gray-500 hover:text-gray-800 px-2 py-1.5">
+              Exit
+            </button>
+          </div>
         </div>
       </header>
 

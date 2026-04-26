@@ -6,6 +6,15 @@ import AdminPanelHeader from '../components/AdminPanelHeader'
 
 const STATUSES = ['created', 'paid', 'preparing', 'served', 'completed']
 
+const LINE_ITEM_STATUSES = ['queued', 'preparing', 'ready', 'served']
+
+const LINE_STATUS_LABEL = {
+  queued: 'Received',
+  preparing: 'Cooking',
+  ready: 'Ready',
+  served: 'Served',
+}
+
 export default function Orders() {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
@@ -68,6 +77,22 @@ export default function Orders() {
         prev.map(o => (o._id === orderId ? { ...o, status } : o))
       )
       setSelected((prev) => (prev?._id === orderId ? { ...prev, status } : prev))
+    } catch (e) {
+      alert(e.message)
+    } finally {
+      setUpdating(null)
+    }
+  }
+
+  async function handleLineItemStatus(orderId, lineIndex, status) {
+    setUpdating(orderId)
+    try {
+      const res = await api.post('/restaurant/line-item-status', { orderId, lineIndex, status })
+      const updated = res?.order
+      if (updated?._id) {
+        setOrders((prev) => prev.map((o) => (o._id === updated._id ? updated : o)))
+        setSelected((prev) => (prev?._id === updated._id ? updated : prev))
+      }
     } catch (e) {
       alert(e.message)
     } finally {
@@ -340,7 +365,30 @@ export default function Orders() {
                   </p>
                 </div>
                 <div className="divide-y divide-gray-200">
-                  {orderDishCounts(selected).length ? (
+                  {Array.isArray(selected.lineItems) && selected.lineItems.length ? (
+                    selected.lineItems.map((li, idx) => (
+                      <div key={li._id || idx} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm text-gray-900 font-medium truncate">{li.dish?.name || 'Item'}</p>
+                          {li.dish?.price != null ? (
+                            <p className="text-xs text-gray-500 mt-0.5">₹{li.dish.price}</p>
+                          ) : null}
+                        </div>
+                        <select
+                          value={li.status || 'queued'}
+                          disabled={updating === selected._id}
+                          onChange={(e) => handleLineItemStatus(selected._id, idx, e.target.value)}
+                          className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm bg-white shrink-0"
+                        >
+                          {LINE_ITEM_STATUSES.map((s) => (
+                            <option key={s} value={s}>
+                              {LINE_STATUS_LABEL[s] || s}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ))
+                  ) : orderDishCounts(selected).length ? (
                     orderDishCounts(selected).map((i) => (
                       <div key={i.name} className="px-4 py-3 flex items-center justify-between">
                         <p className="text-sm text-gray-900">{i.name}</p>

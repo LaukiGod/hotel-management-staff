@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { kioskAxios } from '../../api/kioskAxios'
 import KioskShell from '../../components/KioskShell'
+import KioskBackButton from '../../components/KioskBackButton'
 import { useKioskSession } from '../../context/KioskSessionContext'
 
 const UNCATEGORIZED = 'Other'
@@ -34,6 +35,7 @@ export default function KioskMenu() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const [placing, setPlacing] = useState(false)
   const [search, setSearch] = useState('')
   const [focusCategory, setFocusCategory] = useState(null)
@@ -103,17 +105,25 @@ export default function KioskMenu() {
     return inCart?.qty || 0
   }
 
-  async function placeOrder() {
+  function openOrderConfirm() {
+    if (!dishIdsExpanded.length) return
+    setConfirmOpen(true)
+  }
+
+  async function submitConfirmedOrder() {
     if (!dishIdsExpanded.length || placing) return
     setPlacing(true)
     try {
       const res = await kioskAxios.post('/user/order', { tableNo: Number(tableNo), dishes: dishIdsExpanded })
       const id = res.data?.orderId || res.data?.order?._id
       if (!id) throw new Error('Order placed, but no orderId returned')
+      await kioskAxios.post('/user/pay', { orderId: id })
       setOrderId(String(id))
-      navigate('/payment')
+      setDrawerOpen(false)
+      setConfirmOpen(false)
+      navigate('/order-tracking')
     } catch (e) {
-      alert(e?.response?.data?.message || e.message || 'Failed to place order')
+      alert(e?.response?.data?.message || e.message || 'Failed to confirm order')
     } finally {
       setPlacing(false)
     }
@@ -394,15 +404,84 @@ export default function KioskMenu() {
 
               <button
                 type="button"
-                onClick={placeOrder}
+                onClick={openOrderConfirm}
                 disabled={!cartCount || placing}
                 className="mt-4 w-full h-14 rounded-2xl bg-white text-neutral-900 font-extrabold hover:bg-white/90 disabled:opacity-50 transition flex items-center justify-center gap-2"
               >
-                {placing ? (
-                  <span className="inline-block w-4 h-4 rounded-full border-2 border-neutral-900/30 border-t-neutral-900 animate-spin" />
-                ) : null}
-                Pay via UPI
+                Confirm order
               </button>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {confirmOpen ? (
+          <motion.div
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <div
+              className="absolute inset-0 bg-black/80"
+              onClick={() => !placing && setConfirmOpen(false)}
+              role="presentation"
+            />
+            <motion.div
+              className="relative w-full max-w-md rounded-3xl border border-white/15 bg-neutral-950 p-6 shadow-2xl"
+              initial={{ scale: 0.96, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <h2 className="text-xl font-extrabold">Confirm your order</h2>
+              <p className="mt-1 text-sm text-white/60">Table #{tableNo} · review items, then confirm.</p>
+
+              <ul className="mt-5 max-h-[40vh] overflow-auto space-y-2 pr-1">
+                {cart.map((i) => {
+                  const idKey = i.dish?.dishId || i.dish?._id
+                  const qty = Number(i.qty) || 0
+                  return (
+                    <li
+                      key={idKey}
+                      className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm"
+                    >
+                      <span className="font-medium truncate">{i.dish?.name}</span>
+                      <span className="text-white/60 shrink-0">
+                        ×{qty} · ₹{Math.round(qty * (Number(i.dish?.price) || 0))}
+                      </span>
+                    </li>
+                  )
+                })}
+              </ul>
+
+              <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-4">
+                <span className="text-white/70">Total</span>
+                <span className="text-2xl font-extrabold">₹{Math.round(total)}</span>
+              </div>
+
+              <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                <button
+                  type="button"
+                  disabled={placing}
+                  onClick={() => setConfirmOpen(false)}
+                  className="flex-1 h-12 rounded-2xl border border-white/15 bg-white/5 font-semibold hover:bg-white/10 disabled:opacity-50"
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  disabled={placing}
+                  onClick={submitConfirmedOrder}
+                  className="flex-1 h-12 rounded-2xl bg-white text-neutral-900 font-extrabold hover:bg-white/90 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {placing ? (
+                    <span className="inline-block w-4 h-4 rounded-full border-2 border-neutral-900/30 border-t-neutral-900 animate-spin" />
+                  ) : null}
+                  Confirm
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         ) : null}

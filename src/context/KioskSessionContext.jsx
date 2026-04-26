@@ -19,6 +19,7 @@ function loadInitial() {
         user: parsed.user ?? null,
         cart: Array.isArray(parsed.cart) ? parsed.cart : [],
         orderId: parsed.orderId ?? null,
+        kioskPath: typeof parsed.kioskPath === 'string' ? parsed.kioskPath : null,
         allergies: Array.isArray(parsed.allergies) ? parsed.allergies : [],
         detailsDraft: parsed.detailsDraft && typeof parsed.detailsDraft === 'object'
           ? {
@@ -28,7 +29,7 @@ function loadInitial() {
             }
           : { name: '', phoneNo: '', allergies: [] },
       }
-    : { tableNo: null, user: null, cart: [], orderId: null, allergies: [], detailsDraft: { name: '', phoneNo: '', allergies: [] } }
+    : { tableNo: null, user: null, cart: [], orderId: null, kioskPath: null, allergies: [], detailsDraft: { name: '', phoneNo: '', allergies: [] } }
 }
 
 const KioskSessionContext = createContext(null)
@@ -61,6 +62,10 @@ export function KioskSessionProvider({ children }) {
       persist((prev) => ({ ...prev, orderId }))
     }
 
+    function setKioskPath(kioskPath) {
+      persist((prev) => ({ ...prev, kioskPath: kioskPath == null ? null : String(kioskPath) }))
+    }
+
     function setDetailsDraft(detailsDraft) {
       const next = detailsDraft && typeof detailsDraft === 'object' ? detailsDraft : {}
       persist((prev) => ({
@@ -89,7 +94,7 @@ export function KioskSessionProvider({ children }) {
     }
 
     function resetSession() {
-      const next = { tableNo: null, user: null, cart: [], orderId: null, allergies: [], detailsDraft: { name: '', phoneNo: '', allergies: [] } }
+      const next = { tableNo: null, user: null, cart: [], orderId: null, kioskPath: null, allergies: [], detailsDraft: { name: '', phoneNo: '', allergies: [] } }
       setState(next)
       localStorage.removeItem(STORAGE_KEY)
     }
@@ -100,6 +105,7 @@ export function KioskSessionProvider({ children }) {
         user: null,
         cart: [],
         orderId: null,
+        kioskPath: null,
         allergies: [],
         detailsDraft: prev.detailsDraft || { name: '', phoneNo: '', allergies: [] },
       }))
@@ -111,6 +117,7 @@ export function KioskSessionProvider({ children }) {
       setUser,
       setAllergies,
       setOrderId,
+      setKioskPath,
       setDetailsDraft,
       setQty,
       setCart,

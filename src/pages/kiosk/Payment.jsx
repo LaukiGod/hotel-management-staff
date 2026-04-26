@@ -51,7 +51,7 @@ export default function KioskPayment() {
     setError('')
     try {
       await kioskAxios.post('/user/pay', { orderId, upiReference: utr.trim() })
-      navigate('/order-success')
+      navigate('/order-tracking')
     } catch (e) {
       setError(e?.response?.data?.message || e.message || 'Payment confirmation failed')
     } finally {

@@ -8,6 +8,8 @@ import { useAuth } from '../context/AuthContext'
 export default function Tables() {
   const { user } = useAuth()
   const [tables, setTables] = useState([])
+  const [orders, setOrders] = useState([])
+  const [selectedTable, setSelectedTable] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -17,9 +19,13 @@ export default function Tables() {
 
     async function loadTables() {
       try {
-        const tablesRes = await api.get('/restaurant/tables')
+        const [tablesRes, ordersRes] = await Promise.all([
+          api.get('/restaurant/tables'),
+          api.get('/restaurant/orders').catch(() => []),
+        ])
         if (!mounted) return
         setTables(Array.isArray(tablesRes) ? tablesRes : [])
+        setOrders(Array.isArray(ordersRes) ? ordersRes : [])
         setError('')
       } catch (e) {
         if (!mounted) return
@@ -45,6 +51,7 @@ export default function Tables() {
     try {
       await api.patch(`/restaurant/tables/${tableNo}/available`, {})
       setTables((prev) => prev.map((t) => (t.tableNo === tableNo ? { ...t, status: 'available', waiterRequested: false } : t)))
+      setSelectedTable((prev) => (prev?.tableNo === tableNo ? null : prev))
     } catch (e) {
       alert(e.message)
     }
@@ -98,13 +105,22 @@ export default function Tables() {
         {tables.map(table => (
           <div
             key={table._id}
-            className={`rounded-xl border-2 p-4 text-center ${
+            role="button"
+            tabIndex={0}
+            onClick={() => setSelectedTable(table)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                setSelectedTable(table)
+              }
+            }}
+            className={`rounded-xl border-2 p-4 text-center transition-shadow hover:shadow-sm ${
               table.status === 'occupied'
                 ? 'border-red-200 bg-red-50'
                 : table.status === 'cleaning'
                   ? 'border-orange-200 bg-orange-50'
                   : 'border-green-200 bg-green-50'
-            }`}
+            } cursor-pointer`}
           >
             <p className="text-2xl font-bold text-gray-800 mb-2">#{table.tableNo}</p>
             <StatusBadge status={table.status} />
@@ -116,7 +132,11 @@ export default function Tables() {
             )}
             {user && table.status !== 'available' && (
               <button
-                onClick={() => markAvailable(table.tableNo)}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  markAvailable(table.tableNo)
+                }}
                 className="mt-3 text-xs text-blue-700 hover:underline"
               >
                 Mark Available

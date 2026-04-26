@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { AdminLayoutProvider } from './context/AdminLayoutContext'
@@ -27,8 +28,10 @@ import KioskRegister from './pages/kiosk/Register'
 import KioskMenu from './pages/kiosk/Menu'
 import KioskPayment from './pages/kiosk/Payment'
 import KioskOrderSuccess from './pages/kiosk/OrderSuccess'
+import KioskOrderTracking from './pages/kiosk/KioskOrderTracking'
+import KioskOrderFeedback from './pages/kiosk/KioskOrderFeedback'
 
-const KIOSK_PERSISTED_PATHS = new Set(['/tables', '/register', '/menu', '/payment', '/order-success'])
+const KIOSK_PERSISTED_PATHS = new Set(['/tables', '/register', '/menu', '/payment', '/order-tracking', '/order-success'])
 
 /**
  * Persists the current kiosk step so a return to the app root can restore it (see `getKioskResumePath` + `Welcome`).
@@ -86,6 +89,8 @@ function AnimatedRoutes() {
         <Route path="/register" element={<KioskRegister />} />
         <Route path="/menu" element={<KioskMenu />} />
         <Route path="/payment" element={<KioskPayment />} />
+        <Route path="/order-tracking" element={<KioskOrderTracking />} />
+        <Route path="/order-feedback" element={<KioskOrderFeedback />} />
         <Route path="/order-success" element={<KioskOrderSuccess />} />
 
         {/* Staff/Admin auth */}
@@ -123,6 +128,7 @@ export default function App() {
     <AuthProvider>
       <KioskSessionProvider>
         <BrowserRouter>
+          <KioskPathSync />
           <AnimatedRoutes />
         </BrowserRouter>
       </KioskSessionProvider>

@@ -7,7 +7,11 @@ export default function Alerts() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  async function loadAlerts() {
+  const fetchAlerts = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
+      setLoading(true)
+      setError('')
+    }
     try {
       const data = await api.get('/restaurant/alerts')
       setAlerts(data)
@@ -15,26 +19,22 @@ export default function Alerts() {
     } catch (e) {
       setError(e.message)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
-  }
-
-  useEffect(() => {
-    loadAlerts()
-    const interval = setInterval(loadAlerts, 5000)
-    return () => clearInterval(interval)
   }, [])
 
   useEffect(() => {
-    load()
-  }, [load])
+    fetchAlerts({ silent: false })
+    const interval = setInterval(() => fetchAlerts({ silent: true }), 5000)
+    return () => clearInterval(interval)
+  }, [fetchAlerts])
 
   return (
     <div className="flex min-h-full min-w-0 flex-1 flex-col">
       <AdminPanelHeader
         title="Allergy alerts"
         actionLabel="Refresh"
-        onAction={load}
+        onAction={() => fetchAlerts({ silent: false })}
         actionDisabled={loading}
       />
       {loading ? (
@@ -42,34 +42,34 @@ export default function Alerts() {
       ) : error ? (
         <p className="p-4 text-red-500 sm:p-6">{error}</p>
       ) : (
-    <div className="p-4 sm:p-6">
-      {alerts.length === 0 ? (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
-          <p className="text-green-700 font-medium">No active allergy alerts</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {alerts.map(alert => (
-            <div key={alert._id} className="bg-orange-50 border border-orange-200 rounded-xl p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-semibold text-orange-900">Table #{alert.tableNo}</p>
-                  <p className="text-sm text-orange-700 mt-0.5">
-                    Concerns: {alert.allergiesInput?.join(', ') || 'flagged'}
-                  </p>
-                  <p className="text-xs text-orange-500 mt-1">
-                    Status: <span className="capitalize">{alert.status}</span>
-                    {' · '}
-                    {new Date(alert.createdAt).toLocaleString()}
-                  </p>
-                </div>
-                <span className="text-2xl">⚠️</span>
-              </div>
+        <div className="p-4 sm:p-6">
+          {alerts.length === 0 ? (
+            <div className="rounded-xl border border-green-200 bg-green-50 p-6 text-center">
+              <p className="font-medium text-green-700">No active allergy alerts</p>
             </div>
-          ))}
+          ) : (
+            <div className="space-y-3">
+              {alerts.map((alert) => (
+                <div key={alert._id} className="rounded-xl border border-orange-200 bg-orange-50 p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-orange-900">Table #{alert.tableNo}</p>
+                      <p className="mt-0.5 text-sm text-orange-700">
+                        Concerns: {alert.allergiesInput?.join(', ') || 'flagged'}
+                      </p>
+                      <p className="mt-1 text-xs text-orange-500">
+                        Status: <span className="capitalize">{alert.status}</span>
+                        {' · '}
+                        {new Date(alert.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                    <span className="text-2xl">⚠️</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      )}
-    </div>
       )}
     </div>
   )

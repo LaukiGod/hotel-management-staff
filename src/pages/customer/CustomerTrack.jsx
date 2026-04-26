@@ -1,11 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../../api/client'
+import { useCustomerVerifySession } from '../../hooks/useCustomerVerifySession'
 import CustomerLayout from './CustomerLayout'
-import { clearCustomerSession, getCustomerSession } from './customerSession'
+import { normalizedLines } from './customerOrderUtils'
+import { clearCustomerSession, getCustomerSession, patchCustomerSession } from './customerSession'
+
+const LINE_LABELS = {
+  queued: { label: 'Received', className: 'bg-gray-100 text-gray-800' },
+  preparing: { label: 'Cooking', className: 'bg-amber-100 text-amber-900' },
+  ready: { label: 'Ready', className: 'bg-cyan-100 text-cyan-900' },
+  served: { label: 'Served', className: 'bg-emerald-100 text-emerald-900' },
+}
 
 export default function CustomerTrack() {
   const navigate = useNavigate()
+  useCustomerVerifySession()
   const session = getCustomerSession()
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
@@ -30,15 +40,24 @@ export default function CustomerTrack() {
       return
     }
     loadOrders()
-    const t = setInterval(loadOrders, 10000)
+    const t = setInterval(loadOrders, 4000)
     return () => clearInterval(t)
   }, [navigate, session?.tableNo])
 
   const latestOrder = useMemo(() => orders[0], [orders])
+  const latestLines = useMemo(() => normalizedLines(latestOrder), [latestOrder])
+  const allLatestServed =
+    latestLines.length > 0 && latestLines.every((li) => li.status === 'served')
+
+  useEffect(() => {
+    if (!allLatestServed) return
+    document.getElementById('customer-review-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [allLatestServed])
 
   async function markMealComplete() {
     try {
       await api.post('/user/meal-complete', { tableNo: session.tableNo })
+      patchCustomerSession({ resumePath: '/customer/menu' })
       await loadOrders()
       alert('Meal marked complete.')
     } catch (e) {
@@ -77,36 +96,73 @@ export default function CustomerTrack() {
   return (
     <CustomerLayout title="Track Order">
       <div className="space-y-3">
-        {orders.map((order) => (
-          <div key={order._id} className="bg-white rounded-xl border border-gray-200 p-4">
-            <div className="flex items-center justify-between">
-              <p className="font-medium text-gray-800">Order #{order._id.slice(-6)}</p>
-              <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700 capitalize">{order.status}</span>
+        {orders.map((order) => {
+          const lines = normalizedLines(order)
+          return (
+            <div key={order._id} className="bg-white rounded-xl border border-gray-200 p-4">
+              <div className="flex items-center justify-between">
+                <p className="font-medium text-gray-800">Order #{order._id.slice(-6)}</p>
+                <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700 capitalize">{order.status}</span>
+              </div>
+              {lines.length ? (
+                <ul className="mt-3 space-y-2">
+                  {lines.map((li, i) => {
+                    const dish = li.dish || {}
+                    const st = li.status || 'queued'
+                    const meta = LINE_LABELS[st] || LINE_LABELS.queued
+                    return (
+                      <li key={li._id || `${dish._id}-${i}`} className="flex items-center justify-between gap-2 text-sm border-t border-gray-100 first:border-t-0 first:pt-0 pt-2">
+                        <span className="text-gray-900 font-medium truncate">{dish.name || 'Item'}</span>
+                        <span className={`text-xs font-semibold px-2 py-1 rounded-lg shrink-0 ${meta.className}`}>{meta.label}</span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              ) : (
+                <p className="text-sm text-gray-500 mt-2">{order.dishes?.map((d) => d.name).join(', ') || 'No items'}</p>
+              )}
             </div>
-            <p className="text-sm text-gray-500 mt-2">
-              {order.dishes?.map((d) => d.name).join(', ') || 'No items'}
-            </p>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       <div className="mt-5 flex gap-2 flex-wrap">
-        <button onClick={() => navigate('/customer/menu')} className="px-3 py-2 text-sm border border-gray-300 rounded-lg">
-          Add More Items
+        <button
+          type="button"
+          onClick={() => navigate('/customer/menu')}
+          className="px-3 py-2 text-sm border border-gray-300 rounded-lg font-medium bg-white hover:bg-gray-50"
+        >
+          Back to menu — add more dishes
         </button>
         <button onClick={markMealComplete} className="px-3 py-2 text-sm bg-gray-900 text-white rounded-lg">
           Mark Meal Completed
         </button>
       </div>
 
-      <div className="mt-6 bg-white rounded-xl border border-gray-200 p-4">
+      <div id="customer-review-anchor" className="mt-6 bg-white rounded-xl border border-gray-200 p-4 scroll-mt-20">
+        {allLatestServed ? (
+          <p className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2 mb-3">
+            All items served — tell us how we did below.
+          </p>
+        ) : null}
         <p className="font-medium text-gray-800 mb-2">Leave a Review</p>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <select value={rating} onChange={(e) => setRating(Number(e.target.value))} className="border border-gray-300 rounded-lg px-2 py-1 text-sm">
-            {[5, 4, 3, 2, 1].map((r) => <option key={r} value={r}>{r} Star</option>)}
+            {[5, 4, 3, 2, 1].map((r) => (
+              <option key={r} value={r}>
+                {r} Star
+              </option>
+            ))}
           </select>
-          <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Comment" className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm" />
-          <button onClick={submitReview} className="px-3 py-1.5 text-sm bg-gray-900 text-white rounded-lg">Submit</button>
+          <input
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Comment"
+            className="flex-1 min-w-[160px] border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+          />
+          <button onClick={submitReview} className="px-3 py-1.5 text-sm bg-gray-900 text-white rounded-lg">
+            Submit
+          </button>
         </div>
       </div>
 

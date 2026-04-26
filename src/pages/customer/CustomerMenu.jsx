@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../../api/client'
+import { useCustomerVerifySession } from '../../hooks/useCustomerVerifySession'
 import CustomerLayout from './CustomerLayout'
 import { getCustomerSession } from './customerSession'
 
@@ -28,11 +29,13 @@ function groupByCategory(dishes) {
 
 export default function CustomerMenu() {
   const navigate = useNavigate()
+  useCustomerVerifySession()
   const session = getCustomerSession()
   const [menu, setMenu] = useState([])
   const [loading, setLoading] = useState(true)
   const [cart, setCart] = useState({})
   const [ordering, setOrdering] = useState(false)
+  const [checkoutConfirmOpen, setCheckoutConfirmOpen] = useState(false)
   const [activeCategory, setActiveCategory] = useState('All')
   const [selectedDish, setSelectedDish] = useState(null)
   const [search, setSearch] = useState('')
@@ -102,7 +105,10 @@ export default function CustomerMenu() {
     setOrdering(true)
     try {
       const orderRes = await api.post('/user/order', { tableNo: session.tableNo, dishes: selectedDishIds })
-      await api.post('/user/pay', { orderId: orderRes.order._id, upiReference: `UPI-${Date.now()}` })
+      const oid = orderRes?.orderId || orderRes?.order?._id
+      if (!oid) throw new Error('No order id returned')
+      await api.post('/user/pay', { orderId: oid })
+      setCheckoutConfirmOpen(false)
       navigate('/customer/track')
     } catch (e) {
       alert(e.message)
@@ -161,8 +167,8 @@ export default function CustomerMenu() {
           <p className="text-sm text-gray-500 py-4">Loading menu…</p>
         ) : (
           <>
-            <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1">
-              <div className="flex gap-2 min-w-max pb-1">
+            <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1 md:overflow-x-visible md:[scrollbar-width:auto] md:[&::-webkit-scrollbar]:hidden">
+              <div className="flex min-w-max gap-2 pb-1 md:min-w-0 md:flex-wrap">
                 {categories.map((category) => (
                   <button
                     key={category}
@@ -183,8 +189,8 @@ export default function CustomerMenu() {
             </div>
 
             {activeCategory === 'All' && grouped.length > 0 && (
-              <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:thin]">
-                <div className="flex gap-2 min-w-max pb-1 text-xs text-gray-600">
+              <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:thin] md:overflow-x-visible md:[scrollbar-width:auto] md:[&::-webkit-scrollbar]:hidden">
+                <div className="flex min-w-max gap-2 pb-1 text-xs text-gray-600 md:min-w-0 md:flex-wrap">
                   {grouped.map((g, i) => (
                     <button
                       type="button"
@@ -200,8 +206,11 @@ export default function CustomerMenu() {
             )}
 
             <div className="rounded-2xl border border-dashed border-amber-200/80 bg-amber-50/80 p-3 flex items-center justify-between gap-2">
-              <p className="text-xs sm:text-sm font-medium text-amber-950/90">Swipe each row sideways for more items in a category</p>
-              <span className="text-base shrink-0" aria-hidden>
+              <p className="text-xs sm:text-sm font-medium text-amber-950/90">
+                <span className="md:hidden">Swipe each row sideways for more items in a category</span>
+                <span className="hidden md:inline">Use the category chips above to jump between sections.</span>
+              </p>
+              <span className="text-base shrink-0 md:hidden" aria-hidden>
                 ↔
               </span>
             </div>
@@ -218,10 +227,10 @@ export default function CustomerMenu() {
                       <h3 className="text-sm font-bold text-gray-900">{group.name}</h3>
                       <span className="text-xs text-gray-500">{group.dishes.length} items</span>
                     </div>
-                    <div className="overflow-x-auto overflow-y-hidden -mx-1 px-1 pb-2 scroll-smooth snap-x snap-mandatory [scrollbar-width:thin]">
-                      <ul className="flex gap-3 w-max pr-1">
+                    <div className="-mx-1 overflow-x-auto overflow-y-hidden px-1 pb-2 scroll-smooth snap-x snap-mandatory [scrollbar-width:thin] md:mx-0 md:overflow-x-visible md:overflow-y-visible md:px-0 md:pb-0 md:snap-none md:[scrollbar-width:auto] md:[&::-webkit-scrollbar]:hidden">
+                      <ul className="flex w-max gap-3 pr-1 md:grid md:w-full md:max-w-none md:grid-cols-2 md:gap-4 lg:grid-cols-3 md:pr-0">
                         {group.dishes.map((dish) => (
-                          <li key={dish._id} className="w-40 sm:w-44 shrink-0 snap-start">
+                          <li key={dish._id} className="w-40 shrink-0 snap-start sm:w-44 md:w-auto md:min-w-0">
                             <DishRowCard
                               dish={dish}
                               cart={cart}
@@ -287,6 +296,47 @@ export default function CustomerMenu() {
         )}
       </div>
 
+      {checkoutConfirmOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => !ordering && setCheckoutConfirmOpen(false)} role="presentation" />
+          <div className="relative w-full max-w-md bg-white rounded-2xl border border-gray-200 shadow-xl p-5">
+            <h2 className="text-lg font-bold text-gray-900">Confirm your order</h2>
+            <p className="text-sm text-gray-500 mt-1">Table #{session?.tableNo}</p>
+            <ul className="mt-4 max-h-48 overflow-auto space-y-2 text-sm">
+              {menu
+                .filter((d) => (cart[d._id] || 0) > 0)
+                .map((d) => (
+                  <li key={d._id} className="flex justify-between gap-2 border-b border-gray-100 pb-2">
+                    <span className="font-medium truncate">{d.name}</span>
+                    <span className="text-gray-600 shrink-0">
+                      ×{cart[d._id]} · Rs {Math.round((cart[d._id] || 0) * (Number(d.price) || 0))}
+                    </span>
+                  </li>
+                ))}
+            </ul>
+            <p className="mt-3 text-sm font-semibold text-gray-900">Total: Rs {Math.round(cartTotal)}</p>
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                disabled={ordering}
+                onClick={() => setCheckoutConfirmOpen(false)}
+                className="flex-1 py-2.5 text-sm border border-gray-300 rounded-xl hover:bg-gray-50 disabled:opacity-50"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                disabled={ordering}
+                onClick={placeAndPay}
+                className="flex-1 py-2.5 text-sm bg-gray-900 text-white rounded-xl disabled:opacity-50"
+              >
+                {ordering ? 'Placing…' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {selectedDish && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-2 sm:p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setSelectedDish(null)} role="presentation" />
@@ -334,11 +384,11 @@ export default function CustomerMenu() {
           </div>
           <button
             type="button"
-            onClick={placeAndPay}
+            onClick={() => selectedDishIds.length && setCheckoutConfirmOpen(true)}
             disabled={ordering || selectedDishIds.length === 0}
             className="px-4 py-2 text-sm bg-gray-900 text-white rounded-xl disabled:opacity-50"
           >
-            {ordering ? 'Processing...' : 'Checkout'}
+            Confirm order
           </button>
         </div>
       </div>

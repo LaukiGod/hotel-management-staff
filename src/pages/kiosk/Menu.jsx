@@ -88,7 +88,8 @@ export default function KioskMenu() {
   )
   const dishIdsExpanded = useMemo(() => {
     return cart.flatMap((i) => {
-      const id = i.dish?.dishId || i.dish?._id
+      // Order API expects MongoDB ObjectIds, not numeric dishId.
+      const id = i.dish?._id ?? i.dish?.dishId
       const qty = Number(i.qty) || 0
       return id ? Array.from({ length: qty }, () => id) : []
     })
@@ -100,18 +101,18 @@ export default function KioskMenu() {
   }, [categoryNames, focusCategory])
 
   function getQty(dish) {
-    const idKey = dish.dishId || dish._id
-    const inCart = cart.find((i) => (i.dish?.dishId || i.dish?._id) === idKey)
+    const idKey = dish._id ?? dish.dishId
+    const inCart = cart.find((i) => (i.dish?._id ?? i.dish?.dishId) === idKey)
     return inCart?.qty || 0
   }
 
   function openOrderConfirm() {
-    if (!dishIdsExpanded.length) return
+    if (cartCount < 1) return
     setConfirmOpen(true)
   }
 
   async function submitConfirmedOrder() {
-    if (!dishIdsExpanded.length || placing) return
+    if (cartCount < 1 || placing) return
     setPlacing(true)
     try {
       const res = await kioskAxios.post('/user/order', { tableNo: Number(tableNo), dishes: dishIdsExpanded })
@@ -244,7 +245,7 @@ export default function KioskMenu() {
                     <div className="overflow-x-auto overflow-y-hidden -mx-4 sm:-mx-5 px-4 sm:px-5 pb-1 scroll-smooth snap-x snap-mandatory [scrollbar-width:thin]">
                       <ul className="flex gap-3 w-max pr-1">
                         {row.map((dish) => {
-                          const idKey = dish.dishId || dish._id
+                          const idKey = dish._id ?? dish.dishId
                           const qty = getQty(dish)
                           const ingredients = Array.isArray(dish.ingredients) ? dish.ingredients.slice(0, 3).join(', ') : ''
                           return (
@@ -345,7 +346,7 @@ export default function KioskMenu() {
               <div className="mt-5 space-y-3 max-h-[45vh] overflow-auto pr-1">
                 {cart.length ? (
                   cart.map((i) => {
-                    const idKey = i.dish?.dishId || i.dish?._id
+                    const idKey = i.dish?._id ?? i.dish?.dishId
                     const qty = Number(i.qty) || 0
                     return (
                       <div
@@ -440,7 +441,7 @@ export default function KioskMenu() {
 
               <ul className="mt-5 max-h-[40vh] overflow-auto space-y-2 pr-1">
                 {cart.map((i) => {
-                  const idKey = i.dish?.dishId || i.dish?._id
+                  const idKey = i.dish?._id ?? i.dish?.dishId
                   const qty = Number(i.qty) || 0
                   return (
                     <li

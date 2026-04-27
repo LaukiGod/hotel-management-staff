@@ -105,6 +105,11 @@ export default function Orders() {
     [cart]
   )
 
+  const editCartCount = useMemo(
+    () => Object.values(editCart).reduce((sum, q) => sum + (Number(q) || 0), 0),
+    [editCart]
+  )
+
   function openAdd() {
     setAddOpen(true)
     setTableNo('')
@@ -158,7 +163,7 @@ export default function Orders() {
     if (!tNo) return setCreateError('Please select a table.')
     if (!customerName.trim()) return setCreateError('Customer name is required.')
     if (!/^\d{10}$/.test(digits)) return setCreateError('Phone number must be exactly 10 digits.')
-    if (!dishIds.length) return setCreateError('Please add at least one dish (qty must be > 0).')
+    if (cartCount < 1) return setCreateError('Please add at least one dish.')
 
     const allergies = allergiesInput
       .split(',')
@@ -203,7 +208,7 @@ export default function Orders() {
     const dishIds = Object.entries(editCart).flatMap(([id, qty]) =>
       Array.from({ length: Math.max(0, Number(qty) || 0) }, () => id)
     )
-    if (!dishIds.length) return setDetailError('Please keep at least one dish.')
+    if (editCartCount < 1) return setDetailError('Please add at least one dish.')
 
     const allergies = editAllergiesInput
       .split(',')

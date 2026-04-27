@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../../api/client'
-import { clearCustomerSession, getCustomerSession, setCustomerSession } from './customerSession'
+import { clearCustomerSession, getCustomerSession, isQuickBrowseSession, setCustomerSession } from './customerSession'
 import { sessionMatchesTableUser, tableHasOpenCustomerTicket } from './customerOrderUtils'
 
 export default function CustomerLogin() {
@@ -20,6 +20,11 @@ export default function CustomerLogin() {
     async function restoreSession() {
       const existing = getCustomerSession()
       if (!existing?.tableNo) {
+        setRestoring(false)
+        return
+      }
+      if (isQuickBrowseSession(existing)) {
+        if (!cancelled) navigate('/customer/menu', { replace: true })
         setRestoring(false)
         return
       }
@@ -67,6 +72,7 @@ export default function CustomerLogin() {
         name: u?.name || name,
         phoneNo: u?.phoneNo || phoneNo,
         userId: u?._id != null ? String(u._id) : '',
+        flow: 'standard',
         resumePath: '/customer/menu'
       })
       navigate('/customer/menu')

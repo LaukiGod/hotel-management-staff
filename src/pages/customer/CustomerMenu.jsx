@@ -167,8 +167,8 @@ export default function CustomerMenu() {
       alert('Please enter your name.')
       return
     }
-    if (!/^\d{10}$/.test(digits)) {
-      alert('Phone number must be exactly 10 digits.')
+    if (digits && !/^\d{10}$/.test(digits)) {
+      alert('Phone number must be exactly 10 digits (or leave it blank).')
       return
     }
     if (!s?.tableNo) return

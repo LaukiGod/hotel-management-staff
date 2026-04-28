@@ -162,7 +162,7 @@ export default function Orders() {
 
     if (!tNo) return setCreateError('Please select a table.')
     if (!customerName.trim()) return setCreateError('Customer name is required.')
-    if (!/^\d{10}$/.test(digits)) return setCreateError('Phone number must be exactly 10 digits.')
+    if (digits && !/^\d{10}$/.test(digits)) return setCreateError('Phone number must be exactly 10 digits (or leave it blank).')
     if (cartCount < 1) return setCreateError('Please add at least one dish.')
 
     const allergies = allergiesInput

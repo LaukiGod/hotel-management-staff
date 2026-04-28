@@ -64,13 +64,13 @@ export default function CustomerLogin() {
       const result = await api.post('/user/login-table', {
         tableNo: Number(tableNo),
         name,
-        phoneNo
+        phoneNo: String(phoneNo || '').replace(/\D/g, '').slice(0, 10)
       })
       const u = result?.user
       setCustomerSession({
         tableNo: Number(tableNo),
         name: u?.name || name,
-        phoneNo: u?.phoneNo || phoneNo,
+        phoneNo: u?.phoneNo || String(phoneNo || '').replace(/\D/g, '').slice(0, 10),
         userId: u?._id != null ? String(u._id) : '',
         flow: 'standard',
         resumePath: '/customer/menu'
@@ -100,7 +100,7 @@ export default function CustomerLogin() {
         <div className="space-y-3">
           <Input label="Table ID" value={tableNo} onChange={setTableNo} type="number" required />
           <Input label="Your Name" value={name} onChange={setName} required />
-          <Input label="Phone Number" value={phoneNo} onChange={setPhoneNo} required />
+          <Input label="Phone Number (optional)" value={phoneNo} onChange={setPhoneNo} />
         </div>
 
         <button

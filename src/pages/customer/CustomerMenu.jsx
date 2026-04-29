@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../../api/client'
 import { useCustomerVerifySession } from '../../hooks/useCustomerVerifySession'
 import CustomerLayout from './CustomerLayout'
-import { getCustomerSession } from './customerSession'
+import { getCustomerSession, isQuickBrowseSession, setCustomerSession, setQuickBrowseSession } from './customerSession'
 
 const UNCATEGORIZED = 'Other'
 
@@ -29,19 +29,46 @@ function groupByCategory(dishes) {
 
 export default function CustomerMenu() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const [sessionRev, setSessionRev] = useState(0)
+  const [sessionReady, setSessionReady] = useState(() => {
+    if (typeof window === 'undefined') return true
+    const qs = new URLSearchParams(window.location.search)
+    return !(qs.get('flow') === 'quick' && qs.get('tableId'))
+  })
   useCustomerVerifySession()
   const session = getCustomerSession()
+  const quickBrowse = isQuickBrowseSession(session)
   const [menu, setMenu] = useState([])
   const [loading, setLoading] = useState(true)
   const [cart, setCart] = useState({})
   const [ordering, setOrdering] = useState(false)
   const [checkoutConfirmOpen, setCheckoutConfirmOpen] = useState(false)
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false)
+  const [detailName, setDetailName] = useState('')
+  const [detailPhone, setDetailPhone] = useState('')
   const [activeCategory, setActiveCategory] = useState('All')
   const [selectedDish, setSelectedDish] = useState(null)
   const [search, setSearch] = useState('')
 
   useEffect(() => {
-    if (!session?.tableNo) {
+    const tid = searchParams.get('tableId')
+    const flow = searchParams.get('flow')
+    if (flow === 'quick' && tid) {
+      const n = Number(tid)
+      if (Number.isFinite(n) && n > 0) {
+        setQuickBrowseSession(n)
+        navigate('/customer/menu', { replace: true })
+        setSessionRev((x) => x + 1)
+      }
+    }
+    setSessionReady(true)
+  }, [searchParams, navigate])
+
+  useEffect(() => {
+    if (!sessionReady) return
+    const s = getCustomerSession()
+    if (!s?.tableNo) {
       navigate('/customer/login', { replace: true })
       return
     }
@@ -54,7 +81,7 @@ export default function CustomerMenu() {
         setMenu([])
       })
       .finally(() => setLoading(false))
-  }, [navigate, session?.tableNo])
+  }, [navigate, sessionReady, sessionRev])
 
   const searchLower = search.trim().toLowerCase()
   const filteredMenu = useMemo(() => {
@@ -100,21 +127,82 @@ export default function CustomerMenu() {
     el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  async function placeAndPay() {
-    if (!selectedDishIds.length) return
+  async function submitOrderOnly() {
+    const s = getCustomerSession()
+    if (!s?.tableNo) throw new Error('Missing table.')
+    if (selectedDishIds.length < 1) throw new Error('Please add at least one dish.')
+    const orderRes = await api.post('/user/order', { tableNo: s.tableNo, dishes: selectedDishIds })
+    const oid = orderRes?.orderId || orderRes?.order?._id
+    if (!oid) throw new Error('No order id returned')
+    await api.post('/user/pay', { orderId: oid })
+    setCheckoutConfirmOpen(false)
+    setDetailsModalOpen(false)
+    navigate('/customer/track')
+  }
+
+  async function executePlaceOrder() {
     setOrdering(true)
     try {
-      const orderRes = await api.post('/user/order', { tableNo: session.tableNo, dishes: selectedDishIds })
-      const oid = orderRes?.orderId || orderRes?.order?._id
-      if (!oid) throw new Error('No order id returned')
-      await api.post('/user/pay', { orderId: oid })
-      setCheckoutConfirmOpen(false)
-      navigate('/customer/track')
+      await submitOrderOnly()
     } catch (e) {
       alert(e.message)
     } finally {
       setOrdering(false)
     }
+  }
+
+  function proceedAfterOrderReview() {
+    if (isQuickBrowseSession(getCustomerSession())) {
+      setCheckoutConfirmOpen(false)
+      setDetailsModalOpen(true)
+      return
+    }
+    executePlaceOrder()
+  }
+
+  async function submitDetailsAndPlaceOrder() {
+    const s = getCustomerSession()
+    const digits = String(detailPhone || '').replace(/\D/g, '').slice(0, 10)
+    if (!detailName.trim()) {
+      alert('Please enter your name.')
+      return
+    }
+    if (digits && !/^\d{10}$/.test(digits)) {
+      alert('Phone number must be exactly 10 digits (or leave it blank).')
+      return
+    }
+    if (!s?.tableNo) return
+    setOrdering(true)
+    try {
+      const result = await api.post('/user/login-table', {
+        tableNo: s.tableNo,
+        name: detailName.trim(),
+        phoneNo: digits,
+      })
+      const u = result?.user
+      setCustomerSession({
+        tableNo: s.tableNo,
+        name: u?.name || detailName.trim(),
+        phoneNo: u?.phoneNo || digits,
+        userId: u?._id != null ? String(u._id) : '',
+        flow: 'standard',
+        resumePath: '/customer/menu',
+      })
+      setSessionRev((x) => x + 1)
+      await submitOrderOnly()
+    } catch (e) {
+      alert(e.message)
+    } finally {
+      setOrdering(false)
+    }
+  }
+
+  if (!sessionReady) {
+    return (
+      <CustomerLayout title="Menu">
+        <p className="text-sm text-gray-500 py-8 text-center">Loading…</p>
+      </CustomerLayout>
+    )
   }
 
   if (!session?.tableNo) {
@@ -128,6 +216,11 @@ export default function CustomerMenu() {
           <div>
             <p className="text-xs text-gray-500">Table #{session?.tableNo}</p>
             <h2 className="text-xl font-bold text-gray-900">Dishes</h2>
+            {quickBrowse ? (
+              <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1.5 mt-2">
+                Quick order: we will ask for your name and phone when you confirm your order.
+              </p>
+            ) : null}
             {!loading && (
               <p className="text-xs text-gray-500 mt-0.5">
                 {menuForView.length} item{menuForView.length === 1 ? '' : 's'}
@@ -135,14 +228,16 @@ export default function CustomerMenu() {
               </p>
             )}
           </div>
-          <button
-            type="button"
-            onClick={() => navigate('/customer/track')}
-            className="w-9 h-9 rounded-full border border-gray-300 bg-white text-sm"
-            aria-label="Track orders"
-          >
-            🧾
-          </button>
+          {!quickBrowse ? (
+            <button
+              type="button"
+              onClick={() => navigate('/customer/track')}
+              className="w-9 h-9 rounded-full border border-gray-300 bg-white text-sm"
+              aria-label="Track orders"
+            >
+              🧾
+            </button>
+          ) : null}
         </div>
 
         <div>
@@ -327,7 +422,7 @@ export default function CustomerMenu() {
               <button
                 type="button"
                 disabled={ordering}
-                onClick={placeAndPay}
+                onClick={proceedAfterOrderReview}
                 className="flex-1 py-2.5 text-sm bg-gray-900 text-white rounded-xl disabled:opacity-50"
               >
                 {ordering ? 'Placing…' : 'Confirm'}
@@ -336,6 +431,55 @@ export default function CustomerMenu() {
           </div>
         </div>
       )}
+
+      {detailsModalOpen ? (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => !ordering && setDetailsModalOpen(false)} role="presentation" />
+          <div className="relative w-full max-w-md bg-white rounded-2xl border border-gray-200 shadow-xl p-5">
+            <h2 className="text-lg font-bold text-gray-900">Your details</h2>
+            <p className="text-sm text-gray-500 mt-1">Table #{session?.tableNo} — required to place this order.</p>
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Name</label>
+                <input
+                  value={detailName}
+                  onChange={(e) => setDetailName(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  autoComplete="name"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Phone (10 digits)</label>
+                <input
+                  value={detailPhone}
+                  onChange={(e) => setDetailPhone(String(e.target.value || '').replace(/\D/g, '').slice(0, 10))}
+                  inputMode="numeric"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  autoComplete="tel"
+                />
+              </div>
+            </div>
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                disabled={ordering}
+                onClick={() => setDetailsModalOpen(false)}
+                className="flex-1 py-2.5 text-sm border border-gray-300 rounded-xl hover:bg-gray-50 disabled:opacity-50"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                disabled={ordering}
+                onClick={submitDetailsAndPlaceOrder}
+                className="flex-1 py-2.5 text-sm bg-gray-900 text-white rounded-xl disabled:opacity-50"
+              >
+                {ordering ? 'Placing…' : 'Place order'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {selectedDish && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-2 sm:p-4">

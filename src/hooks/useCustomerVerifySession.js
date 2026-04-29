@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
-import { clearCustomerSession, getCustomerSession, setCustomerResumePath } from '../pages/customer/customerSession'
+import { clearCustomerSession, getCustomerSession, isQuickBrowseSession, setCustomerResumePath } from '../pages/customer/customerSession'
 import { sessionMatchesTableUser } from '../pages/customer/customerOrderUtils'
 
 /**
@@ -22,6 +22,16 @@ export function useCustomerVerifySession() {
       const session = getCustomerSession()
       if (!session?.tableNo) {
         navigate('/customer/login', { replace: true })
+        return
+      }
+      if (isQuickBrowseSession(session)) {
+        if (pathname === '/customer/track') {
+          navigate('/customer/menu', { replace: true })
+          return
+        }
+        if (pathname === '/customer/menu') {
+          setCustomerResumePath(pathname)
+        }
         return
       }
       try {

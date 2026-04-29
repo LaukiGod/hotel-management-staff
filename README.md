@@ -15,16 +15,16 @@ Make sure the backend is running at `http://localhost:5000` and has `FRONTEND_UR
 
 ## Roles
 
-| Feature              | STAFF | ADMIN |
-|----------------------|-------|-------|
-| Dashboard            | ✓     | ✓     |
-| Tables               | ✓     | ✓     |
-| Orders + status      | ✓     | ✓     |
-| Allergy Alerts       | ✓     | ✓     |
-| Inventory (view)     | ✓     | ✓     |
-| Inventory (edit)     | —     | ✓     |
-| Menu management      | —     | ✓     |
-| Staff management     | —     | ✓     |
+| Feature          | STAFF | ADMIN |
+| ---------------- | ----- | ----- |
+| Dashboard        | ✓     | ✓     |
+| Tables           | ✓     | ✓     |
+| Orders + status  | ✓     | ✓     |
+| Allergy Alerts   | ✓     | ✓     |
+| Inventory (view) | ✓     | ✓     |
+| Inventory (edit) | —     | ✓     |
+| Menu management  | —     | ✓     |
+| Staff management | —     | ✓     |
 
 ## Auth Flow
 

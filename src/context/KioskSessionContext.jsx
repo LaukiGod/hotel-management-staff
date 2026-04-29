@@ -84,10 +84,10 @@ export function KioskSessionProvider({ children }) {
 
     function setQty(dish, qty) {
       const nextQty = Math.max(0, Number(qty) || 0)
-      const idKey = dish?.dishId || dish?._id
+      const idKey = dish?._id ?? dish?.dishId
       persist((prev) => {
         const next = (prev.cart || [])
-          .filter((i) => (i.dish?.dishId || i.dish?._id) !== idKey)
+          .filter((i) => (i.dish?._id ?? i.dish?.dishId) !== idKey)
           .concat(nextQty > 0 ? [{ dish, qty: nextQty }] : [])
         return { ...prev, cart: next }
       })

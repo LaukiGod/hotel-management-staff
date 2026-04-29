@@ -30,3 +30,18 @@ export function setCustomerResumePath(path) {
 export function clearCustomerSession() {
   localStorage.removeItem(CUSTOMER_SESSION_KEY)
 }
+
+/** Browse-first: table chosen via GET / quick link; name/phone collected at order confirm. */
+export function isQuickBrowseSession(s) {
+  return Boolean(s?.tableNo) && s?.flow === 'quick' && !s?.userId
+}
+
+export function setQuickBrowseSession(tableNo) {
+  const n = Number(tableNo)
+  if (!Number.isFinite(n) || n <= 0) return
+  setCustomerSession({
+    tableNo: n,
+    flow: 'quick',
+    resumePath: '/customer/menu',
+  })
+}

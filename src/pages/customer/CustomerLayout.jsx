@@ -20,7 +20,7 @@ export default function CustomerLayout({ title, children }) {
 
   function exitSession() {
     clearCustomerSession()
-    navigate('/customer/login')
+    navigate('/tables', { replace: true })
   }
 
   return (

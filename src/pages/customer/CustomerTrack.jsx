@@ -36,7 +36,7 @@ export default function CustomerTrack() {
 
   useEffect(() => {
     if (!session?.tableNo) {
-      navigate('/customer/login', { replace: true })
+      navigate('/tables', { replace: true })
       return
     }
     loadOrders()
@@ -76,12 +76,13 @@ export default function CustomerTrack() {
   }
 
   async function exitTable() {
+    clearCustomerSession()
     try {
       await api.post('/user/clear-table', { tableNo: session.tableNo })
-      clearCustomerSession()
-      navigate('/customer/login')
+      navigate('/tables', { replace: true })
     } catch (e) {
-      alert(e.message)
+      // Even if the API call fails, we still end the local session and return to table selection.
+      navigate('/tables', { replace: true })
     }
   }
 
@@ -95,6 +96,12 @@ export default function CustomerTrack() {
 
   return (
     <CustomerLayout title="Track Order">
+      {orders.length > 0 ? (
+        <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+          <p className="font-semibold text-emerald-900">Order confirmed</p>
+          <p className="text-sm text-emerald-800 mt-1">Live status for each item is shown below.</p>
+        </div>
+      ) : null}
       <div className="space-y-3">
         {orders.map((order) => {
           const lines = normalizedLines(order)

@@ -35,7 +35,7 @@ export default function KioskOrderTracking() {
 
   useEffect(() => {
     if (!tableNo || !user || !orderId) {
-      navigate('/menu', { replace: true })
+      navigate('/tables', { replace: true })
       return
     }
 

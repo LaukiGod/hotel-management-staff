@@ -19,19 +19,16 @@ import Alerts from './pages/Alerts'
 import Inventory from './pages/Inventory'
 import Menu from './pages/Menu'
 import StaffManagement from './pages/StaffManagement'
-import CustomerLogin from './pages/customer/CustomerLogin'
 import CustomerMenu from './pages/customer/CustomerMenu'
 import CustomerTrack from './pages/customer/CustomerTrack'
 import KioskWelcome from './pages/kiosk/Welcome'
 import KioskTables from './pages/kiosk/TableSelection'
-import KioskRegister from './pages/kiosk/Register'
-import KioskMenu from './pages/kiosk/Menu'
 import KioskPayment from './pages/kiosk/Payment'
 import KioskOrderSuccess from './pages/kiosk/OrderSuccess'
 import KioskOrderTracking from './pages/kiosk/KioskOrderTracking'
 import KioskOrderFeedback from './pages/kiosk/KioskOrderFeedback'
 
-const KIOSK_PERSISTED_PATHS = new Set(['/tables', '/register', '/menu', '/payment', '/order-tracking', '/order-success'])
+const KIOSK_PERSISTED_PATHS = new Set(['/tables', '/payment', '/order-tracking', '/order-success'])
 
 /**
  * Persists the current kiosk step so a return to the app root can restore it (see `getKioskResumePath` + `Welcome`).
@@ -86,8 +83,8 @@ function AnimatedRoutes() {
         {/* Kiosk ordering flow */}
         <Route path="/" element={<KioskWelcome />} />
         <Route path="/tables" element={<KioskTables />} />
-        <Route path="/register" element={<KioskRegister />} />
-        <Route path="/menu" element={<KioskMenu />} />
+        <Route path="/register" element={<Navigate to="/tables" replace />} />
+        <Route path="/menu" element={<Navigate to="/tables" replace />} />
         <Route path="/payment" element={<KioskPayment />} />
         <Route path="/order-tracking" element={<KioskOrderTracking />} />
         <Route path="/order-feedback" element={<KioskOrderFeedback />} />
@@ -97,8 +94,8 @@ function AnimatedRoutes() {
         <Route path="/login" element={<Login />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
 
-        {/* Legacy customer routes (kept for compatibility) */}
-        <Route path="/customer/login" element={<CustomerLogin />} />
+        {/* Legacy customer login route (no longer used) */}
+        <Route path="/customer/login" element={<Navigate to="/tables" replace />} />
         <Route path="/customer/menu" element={<CustomerMenu />} />
         <Route path="/customer/track" element={<CustomerTrack />} />
 

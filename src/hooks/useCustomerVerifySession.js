@@ -21,7 +21,7 @@ export function useCustomerVerifySession() {
     async function run() {
       const session = getCustomerSession()
       if (!session?.tableNo) {
-        navigate('/customer/login', { replace: true })
+        navigate('/tables', { replace: true })
         return
       }
       if (isQuickBrowseSession(session)) {
@@ -39,7 +39,7 @@ export function useCustomerVerifySession() {
         if (cancelled) return
         if (!ts?.valid || !sessionMatchesTableUser(session, ts)) {
           clearCustomerSession()
-          navigate('/customer/login', { replace: true })
+          navigate('/tables', { replace: true })
           return
         }
         if (pathname === '/customer/menu' || pathname === '/customer/track') {
@@ -48,7 +48,7 @@ export function useCustomerVerifySession() {
       } catch {
         if (cancelled) return
         clearCustomerSession()
-        navigate('/customer/login', { replace: true })
+        navigate('/tables', { replace: true })
       }
     }
 

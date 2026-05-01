@@ -16,7 +16,7 @@ export default function KioskPayment() {
 
   useEffect(() => {
     if (!orderId) {
-      navigate('/menu', { replace: true })
+      navigate('/tables', { replace: true })
       return
     }
   }, [navigate, orderId])

@@ -22,8 +22,9 @@ const STATUS_CONFIG = {
 
 export default function Tables() {
   const { user } = useAuth()
-  const [tables, setTables]             = useState([])
-  const [orders, setOrders]             = useState([])
+  const isAdmin = user?.role === 'ADMIN'
+  const [tables, setTables] = useState([])
+  const [orders, setOrders] = useState([])
   const [selectedTable, setSelectedTable] = useState(null)
   const [loading, setLoading]           = useState(true)
   const [error, setError]               = useState('')
@@ -31,6 +32,9 @@ export default function Tables() {
   const [qrUrl, setQrUrl]               = useState(null)
   const [qrLoading, setQrLoading]       = useState(false)
   const [qrError, setQrError]           = useState('')
+  const [addLoading, setAddLoading] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
 
   useEffect(() => {
     let mounted = true
@@ -62,9 +66,55 @@ export default function Tables() {
   async function markAvailable(tableNo) {
     try {
       await api.patch(`/restaurant/tables/${tableNo}/available`, {})
-      setTables(prev => prev.map(t => t.tableNo === tableNo ? { ...t, status: 'available', waiterRequested: false } : t))
-      setSelectedTable(prev => prev?.tableNo === tableNo ? null : prev)
-    } catch (e) { alert(e.message) }
+      setTables((prev) => prev.map((t) => (t.tableNo === tableNo ? { ...t, status: 'available', waiterRequested: false } : t)))
+      setSelectedTable((prev) => (prev?.tableNo === tableNo ? null : prev))
+    } catch (e) {
+      alert(e.message)
+    }
+  }
+
+  async function handleAddTable() {
+    if (!isAdmin) return
+    setAddLoading(true)
+    try {
+      await api.post('/restaurant/tables/increase')
+      await apiFetchTables()
+    } catch (e) {
+      alert(e.message || 'Failed to add table')
+    } finally {
+      setAddLoading(false)
+    }
+  }
+
+  async function apiFetchTables() {
+    const [tablesRes, ordersRes] = await Promise.all([
+      api.get('/restaurant/tables'),
+      api.get('/restaurant/orders').catch(() => []),
+    ])
+    setTables(Array.isArray(tablesRes) ? tablesRes : [])
+    setOrders(Array.isArray(ordersRes) ? ordersRes : [])
+  }
+
+  function isTableDeletable(table) {
+    if (!table) return false
+    const hasActiveUser = Boolean(table.currentUser)
+    const blockedFlags = Boolean(table.waiterRequested) || Boolean(table.allergyAlert)
+    return table.status === 'available' && !hasActiveUser && !blockedFlags
+  }
+
+  async function handleDeleteSelected() {
+    if (!isAdmin || !selectedTable?._id) return
+    setDeleteLoading(true)
+    setDeleteError('')
+    try {
+      await api.delete(`/restaurant/tables/${selectedTable._id}`)
+      setSelectedTable(null)
+      await apiFetchTables()
+    } catch (e) {
+      setDeleteError(e.message || 'Failed to delete table')
+    } finally {
+      setDeleteLoading(false)
+    }
   }
 
   async function generateQRCode(tableNo) {
@@ -130,8 +180,12 @@ export default function Tables() {
 
   return (
     <div className="flex min-h-full min-w-0 flex-1 flex-col">
-      <AdminPanelHeader title="Tables" actionLabel="Add table" onAction={() => alert('Adding tables is not available in this build.')} />
-
+      <AdminPanelHeader
+        title="Tables"
+        actionLabel={isAdmin ? 'Add table' : undefined}
+        actionDisabled={addLoading}
+        onAction={isAdmin ? handleAddTable : undefined}
+      />
       {loading ? (
         <p className="p-4 text-gray-400 sm:p-6">Loading…</p>
       ) : (
@@ -265,43 +319,67 @@ export default function Tables() {
             </div>
           )}
 
-          {/* ── Table Detail Modal ── */}
+          {/* ── Table detail modal ── */}
           {selectedTable && (
             <div
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
               onClick={() => setSelectedTable(null)}
             >
               <div
                 className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden"
                 onClick={e => e.stopPropagation()}
               >
-                {/* Header */}
-                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100">
                   <div>
-                    <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Table details</p>
-                    <h2 className="text-xl font-bold text-gray-900">#{selectedTable.tableNo}</h2>
+                    <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Table</p>
+                    <h3 className="text-base font-bold text-gray-900 leading-tight">#{selectedTable.tableNo}</h3>
                   </div>
-                  <button
-                    onClick={() => setSelectedTable(null)}
-                    className="h-8 w-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {isAdmin ? (
+                      <button
+                        type="button"
+                        onClick={handleDeleteSelected}
+                        disabled={deleteLoading || !isTableDeletable(selectedTable)}
+                        className={[
+                          'inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition',
+                          isTableDeletable(selectedTable)
+                            ? 'bg-red-600 text-white hover:bg-red-700 disabled:opacity-50'
+                            : 'bg-gray-100 text-gray-400 cursor-not-allowed',
+                        ].join(' ')}
+                        title={
+                          isTableDeletable(selectedTable)
+                            ? 'Delete this table'
+                            : 'Only available tables without an active session can be deleted'
+                        }
+                      >
+                        {deleteLoading ? 'Deleting…' : 'Delete'}
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTable(null)}
+                      className="text-sm text-gray-500 hover:text-gray-700 px-2 py-1 rounded-lg hover:bg-gray-100"
+                    >
+                      Close
+                    </button>
+                  </div>
                 </div>
 
-                {/* Body */}
                 <div className="px-5 py-5">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Seated customer</p>
                   {selectedTable.currentUser ? (
                     <div className="space-y-2.5">
                       {[
-                        ['Name',    selectedTable.currentUser.name || '—'],
-                        ['Phone',   selectedTable.currentUser.phoneNo || '—'],
-                        ['Allergies', Array.isArray(selectedTable.currentUser.allergies) && selectedTable.currentUser.allergies.length ? selectedTable.currentUser.allergies.join(', ') : 'None'],
-                        ['Orders',  tableOrderSummary(selectedTable.tableNo).totalOrders],
-                        ['Bill',    `₹${Math.round(tableOrderSummary(selectedTable.tableNo).totalBill)}`],
+                        ['Name', selectedTable.currentUser.name || '—'],
+                        ['Phone', selectedTable.currentUser.phoneNo || '—'],
+                        [
+                          'Allergies',
+                          Array.isArray(selectedTable.currentUser.allergies) && selectedTable.currentUser.allergies.length
+                            ? selectedTable.currentUser.allergies.join(', ')
+                            : 'None',
+                        ],
+                        ['Orders', tableOrderSummary(selectedTable.tableNo).totalOrders],
+                        ['Bill', `₹${Math.round(tableOrderSummary(selectedTable.tableNo).totalBill)}`],
                       ].map(([label, value]) => (
                         <div key={label} className="flex items-center justify-between text-sm">
                           <span className="text-gray-400">{label}</span>
@@ -313,6 +391,7 @@ export default function Tables() {
                     <p className="text-sm text-gray-400">No customer details available.</p>
                   )}
                 </div>
+                {deleteError ? <p className="px-5 pb-4 text-sm text-red-600">{deleteError}</p> : null}
               </div>
             </div>
           )}

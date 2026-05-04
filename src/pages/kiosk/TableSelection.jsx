@@ -30,16 +30,32 @@ export default function KioskTableSelection() {
 
   useEffect(() => {
     let mounted = true
-    kioskAxios
-      .get('/restaurant/tables')
-      .then((r) => {
+    let firstLoad = true
+
+    async function fetchTables() {
+      try {
+        const r = await kioskAxios.get('/restaurant/tables')
         if (!mounted) return
         setTables(Array.isArray(r.data) ? r.data : r.data?.tables || [])
-      })
-      .catch((e) => setError(e?.response?.data?.message || e.message || 'Failed to load tables'))
-      .finally(() => setLoading(false))
+        setError('')
+      } catch (e) {
+        if (!mounted) return
+        setError(e?.response?.data?.message || e.message || 'Failed to load tables')
+      } finally {
+        if (!mounted) return
+        if (firstLoad) {
+          setLoading(false)
+          firstLoad = false
+        }
+      }
+    }
+
+    fetchTables()
+    const interval = setInterval(fetchTables, 4000)
+
     return () => {
       mounted = false
+      clearInterval(interval)
     }
   }, [])
 

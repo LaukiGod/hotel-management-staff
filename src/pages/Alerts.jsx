@@ -14,7 +14,9 @@ export default function Alerts() {
     }
     try {
       const data = await api.get('/restaurant/alerts')
-      setAlerts(data)
+      const list = Array.isArray(data) ? data : []
+      const active = list.filter((a) => String(a?.status || '').toLowerCase() !== 'completed')
+      setAlerts(active)
       setError('')
     } catch (e) {
       setError(e.message)

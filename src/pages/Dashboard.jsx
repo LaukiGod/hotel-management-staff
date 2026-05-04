@@ -43,7 +43,7 @@ export default function Dashboard() {
   }, [load])
 
   const activeTables = tables.filter(t => t.status === 'occupied').length
-  const pendingOrders = orders.filter(o => ['created', 'paid', 'preparing'].includes(o.status)).length
+  const pendingOrders = orders.filter(o => ['created', 'confirmed', 'preparing'].includes(o.status)).length
 
   return (
     <div className="flex min-h-full min-w-0 flex-1 flex-col">

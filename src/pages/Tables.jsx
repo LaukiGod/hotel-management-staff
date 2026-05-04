@@ -4,6 +4,7 @@ import StatusBadge from '../components/StatusBadge'
 import AllergyBadge from '../components/AllergyBadge'
 import AdminPanelHeader from '../components/AdminPanelHeader'
 import { useAuth } from '../context/AuthContext'
+import { API_BASE_URL } from '../config/api'
 
 // QR icon inline — no extra dep
 function QRIcon({ className = 'h-4 w-4' }) {
@@ -124,8 +125,7 @@ export default function Tables() {
     setQrError('')
     try {
       const token = sessionStorage.getItem('token')
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
-      const response = await fetch(`${baseUrl}/restaurant/tables/${tableNo}/qrcode`, {
+      const response = await fetch(`${API_BASE_URL}/restaurant/tables/${tableNo}/qrcode`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (!response.ok) throw new Error('Failed to generate QR code')
@@ -161,10 +161,18 @@ export default function Tables() {
     return order.dishes.reduce((sum, dish) => sum + getDishPrice(dish), 0)
   }
 
+  /** One kitchen line per row (preferred); else count dish rows (qty = repeated refs). */
+  function orderItemCount(order) {
+    if (Array.isArray(order?.lineItems) && order.lineItems.length > 0) return order.lineItems.length
+    if (Array.isArray(order?.dishes)) return order.dishes.length
+    return 0
+  }
+
   function tableOrderSummary(tableNo) {
     const tableOrders = orders.filter(o => Number(o?.tableNo) === Number(tableNo))
+    const totalItems = tableOrders.reduce((sum, o) => sum + orderItemCount(o), 0)
     return {
-      totalOrders: tableOrders.length,
+      totalItems,
       totalBill: tableOrders.reduce((sum, o) => sum + orderTotal(o), 0),
     }
   }
@@ -378,7 +386,7 @@ export default function Tables() {
                             ? selectedTable.currentUser.allergies.join(', ')
                             : 'None',
                         ],
-                        ['Orders', tableOrderSummary(selectedTable.tableNo).totalOrders],
+                        ['Items ordered', tableOrderSummary(selectedTable.tableNo).totalItems],
                         ['Bill', `₹${Math.round(tableOrderSummary(selectedTable.tableNo).totalBill)}`],
                       ].map(([label, value]) => (
                         <div key={label} className="flex items-center justify-between text-sm">

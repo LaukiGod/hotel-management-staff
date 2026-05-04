@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../../api/client'
+import { onCustomerFlowEnter } from '../../utils/sessionCoordination'
 import { clearCustomerSession, getCustomerSession } from './customerSession'
 
 export default function CustomerLayout({ title, children }) {
@@ -7,6 +9,10 @@ export default function CustomerLayout({ title, children }) {
   const location = useLocation()
   const session = getCustomerSession()
   const onTrack = location.pathname === '/customer/track'
+
+  useEffect(() => {
+    if (session?.tableNo) onCustomerFlowEnter()
+  }, [session?.tableNo])
 
   async function callWaiter() {
     if (!session?.tableNo) return

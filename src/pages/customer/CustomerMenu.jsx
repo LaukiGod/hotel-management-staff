@@ -135,7 +135,6 @@ export default function CustomerMenu() {
     const orderRes = await api.post('/user/order', { tableNo: s.tableNo, dishes: selectedDishIds })
     const oid = orderRes?.orderId || orderRes?.order?._id
     if (!oid) throw new Error('No order id returned')
-    await api.post('/user/pay', { orderId: oid })
     setCheckoutConfirmOpen(false)
     setDetailsModalOpen(false)
     navigate('/customer/track')
@@ -187,6 +186,7 @@ export default function CustomerMenu() {
         tableNo: s.tableNo,
         name: detailName.trim(),
         phoneNo: digits || '',
+        allowExistingSession: true,
       })
       const u = result?.user
       if (allergyList.length) {

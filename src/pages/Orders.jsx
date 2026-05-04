@@ -4,7 +4,7 @@ import StatusBadge from '../components/StatusBadge'
 import AllergyBadge from '../components/AllergyBadge'
 import AdminPanelHeader from '../components/AdminPanelHeader'
 
-const STATUSES = ['created', 'paid', 'preparing', 'served', 'completed']
+const STATUSES = ['created', 'confirmed', 'preparing', 'served', 'completed']
 
 const LINE_ITEM_STATUSES = ['queued', 'preparing', 'ready', 'served']
 

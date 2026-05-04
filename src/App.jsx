@@ -21,14 +21,14 @@ import Menu from './pages/Menu'
 import StaffManagement from './pages/StaffManagement'
 import CustomerMenu from './pages/customer/CustomerMenu'
 import CustomerTrack from './pages/customer/CustomerTrack'
+import TableSelectEntry from './pages/customer/TableSelectEntry'
 import KioskWelcome from './pages/kiosk/Welcome'
 import KioskTables from './pages/kiosk/TableSelection'
-import KioskPayment from './pages/kiosk/Payment'
 import KioskOrderSuccess from './pages/kiosk/OrderSuccess'
 import KioskOrderTracking from './pages/kiosk/KioskOrderTracking'
 import KioskOrderFeedback from './pages/kiosk/KioskOrderFeedback'
 
-const KIOSK_PERSISTED_PATHS = new Set(['/tables', '/payment', '/order-tracking', '/order-success'])
+const KIOSK_PERSISTED_PATHS = new Set(['/tables', '/order-tracking', '/order-success'])
 
 /**
  * Persists the current kiosk step so a return to the app root can restore it (see `getKioskResumePath` + `Welcome`).
@@ -85,7 +85,6 @@ function AnimatedRoutes() {
         <Route path="/tables" element={<KioskTables />} />
         <Route path="/register" element={<Navigate to="/tables" replace />} />
         <Route path="/menu" element={<Navigate to="/tables" replace />} />
-        <Route path="/payment" element={<KioskPayment />} />
         <Route path="/order-tracking" element={<KioskOrderTracking />} />
         <Route path="/order-feedback" element={<KioskOrderFeedback />} />
         <Route path="/order-success" element={<KioskOrderSuccess />} />
@@ -96,6 +95,7 @@ function AnimatedRoutes() {
 
         {/* Legacy customer login route (no longer used) */}
         <Route path="/customer/login" element={<Navigate to="/tables" replace />} />
+        <Route path="/user/table-select/:tableId" element={<TableSelectEntry />} />
         <Route path="/customer/menu" element={<CustomerMenu />} />
         <Route path="/customer/track" element={<CustomerTrack />} />
 

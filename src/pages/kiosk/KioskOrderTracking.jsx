@@ -7,10 +7,10 @@ import { useKioskSession } from '../../context/KioskSessionContext'
 const POLL_MS = 3000
 
 const LINE_LABELS = {
-  queued: { label: 'Received', className: 'bg-white/10 text-white/90 border-white/15' },
-  preparing: { label: 'Cooking', className: 'bg-amber-500/20 text-amber-200 border-amber-400/30' },
-  ready: { label: 'Ready', className: 'bg-cyan-500/15 text-cyan-100 border-cyan-400/25' },
-  served: { label: 'Served', className: 'bg-emerald-500/15 text-emerald-100 border-emerald-400/25' },
+  queued: { label: 'Received', className: 'bg-gray-100 text-gray-700 border-gray-200' },
+  preparing: { label: 'Cooking', className: 'bg-amber-100 text-amber-900 border-amber-200' },
+  ready: { label: 'Ready', className: 'bg-cyan-100 text-cyan-900 border-cyan-200' },
+  served: { label: 'Served', className: 'bg-emerald-100 text-emerald-900 border-emerald-200' },
 }
 
 function normalizedLines(order) {
@@ -84,26 +84,26 @@ export default function KioskOrderTracking() {
   return (
     <KioskShell>
       <div className="min-h-screen w-full px-4 sm:px-6 py-10 max-w-2xl mx-auto">
-        <p className="text-white/70 text-sm">Step 4 of 5</p>
+        <p className="text-gray-500 text-sm">Step 4 of 5</p>
         <h1 className="text-3xl font-extrabold mt-1">Order confirmed</h1>
-        <p className="mt-2 text-sm text-white/70">
+        <p className="mt-2 text-sm text-gray-600">
           Table #{tableNo} · Live status per item
         </p>
 
-        {error ? <p className="mt-4 text-red-300 text-sm">{error}</p> : null}
+        {error ? <p className="mt-4 text-red-600 text-sm">{error}</p> : null}
 
-        <div className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-5">
+        <div className="mt-8 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm text-white/60">Order</p>
-            <p className="font-mono text-sm text-white/90">#{String(orderId).slice(-8)}</p>
+            <p className="text-sm text-gray-500">Order</p>
+            <p className="font-mono text-sm text-gray-700">#{String(orderId).slice(-8)}</p>
           </div>
-          <p className="mt-1 text-xs text-white/50">
+          <p className="mt-1 text-xs text-gray-500">
             {order?.status ? `Kitchen ticket: ${order.status}` : 'Loading…'}
           </p>
 
           <ul className="mt-6 space-y-3">
             {lines.length === 0 ? (
-              <li className="text-sm text-white/50 py-4 text-center">Waiting for order details…</li>
+              <li className="text-sm text-gray-500 py-4 text-center">Waiting for order details…</li>
             ) : (
               lines.map((li, i) => {
                 const dish = li.dish || {}
@@ -112,12 +112,12 @@ export default function KioskOrderTracking() {
                 return (
                   <li
                     key={li._id || `${dish._id || dish.dishId || 'row'}-${i}`}
-                    className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/25 px-4 py-3"
+                    className="flex items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3"
                   >
                     <div className="min-w-0">
-                      <p className="font-semibold text-white truncate">{dish.name || 'Item'}</p>
+                      <p className="font-semibold text-gray-900 truncate">{dish.name || 'Item'}</p>
                       {dish.price != null ? (
-                        <p className="text-xs text-white/50 mt-0.5">₹{dish.price}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">₹{dish.price}</p>
                       ) : null}
                     </div>
                     <span
@@ -132,7 +132,7 @@ export default function KioskOrderTracking() {
           </ul>
         </div>
 
-        <p className="mt-6 text-center text-xs text-white/45">
+        <p className="mt-6 text-center text-xs text-gray-500">
           When every item is served, you will be taken to feedback.
         </p>
       </div>

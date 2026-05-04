@@ -39,19 +39,19 @@ export default function KioskOrderFeedback() {
   return (
     <KioskShell>
       <div className="min-h-screen w-full flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-white/5 backdrop-blur p-8">
-          <p className="text-white/70 text-sm">Step 5 of 5</p>
+        <div className="w-full max-w-lg rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
+          <p className="text-gray-500 text-sm">Step 5 of 5</p>
           <h1 className="text-3xl font-extrabold mt-2">How was everything?</h1>
           {tableNo != null ? (
-            <p className="mt-2 text-sm text-white/60">Table #{tableNo}</p>
+            <p className="mt-2 text-sm text-gray-600">Table #{tableNo}</p>
           ) : null}
 
           <div className="mt-8">
-            <p className="text-sm text-white/70 mb-3">Rating</p>
+            <p className="text-sm text-gray-600 mb-3">Rating</p>
             <StarRating value={rating} onChange={setRating} />
           </div>
 
-          <label className="block mt-6 text-sm text-white/70 mb-2" htmlFor="kiosk-feedback-comment">
+          <label className="block mt-6 text-sm text-gray-600 mb-2" htmlFor="kiosk-feedback-comment">
             Comments (optional)
           </label>
           <textarea
@@ -59,14 +59,14 @@ export default function KioskOrderFeedback() {
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             placeholder="Tell us what you liked…"
-            className="w-full min-h-28 rounded-2xl bg-black/30 border border-white/10 p-4 text-sm outline-none focus:border-white/25 resize-none"
+            className="w-full min-h-28 rounded-2xl bg-white border border-gray-300 p-4 text-sm outline-none focus:border-gray-500 resize-none"
           />
 
           <button
             type="button"
             onClick={submitReview}
             disabled={saving}
-            className="mt-6 w-full h-14 rounded-2xl bg-white text-neutral-900 font-extrabold hover:bg-white/90 disabled:opacity-50 transition"
+            className="mt-6 w-full h-14 rounded-2xl bg-gray-900 text-white font-extrabold hover:bg-gray-800 disabled:opacity-50 transition"
           >
             {saving ? 'Submitting…' : 'Submit feedback'}
           </button>
@@ -88,11 +88,11 @@ function StarRating({ value, onChange }) {
             key={v}
             onClick={() => onChange(v)}
             className={`w-11 h-11 rounded-xl border transition ${
-              active ? 'bg-amber-500/20 border-amber-400/30' : 'bg-white/5 border-white/10 hover:bg-white/10'
+              active ? 'bg-amber-100 border-amber-300' : 'bg-white border-gray-300 hover:bg-gray-50'
             }`}
             aria-label={`${v} stars`}
           >
-            <span className={`text-xl ${active ? 'text-amber-300' : 'text-white/55'}`}>★</span>
+            <span className={`text-xl ${active ? 'text-amber-500' : 'text-gray-400'}`}>★</span>
           </button>
         )
       })}

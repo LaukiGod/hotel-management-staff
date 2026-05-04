@@ -62,18 +62,18 @@ export default function KioskOrderSuccess() {
   return (
     <KioskShell>
       <div className="min-h-screen w-full flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-3xl rounded-3xl border border-white/10 bg-white/5 backdrop-blur p-8">
-          <p className="text-white/70 text-sm">Step 5 of 5</p>
+        <div className="w-full max-w-3xl rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
+          <p className="text-gray-500 text-sm">Step 5 of 5</p>
           <div className="mt-2 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div>
               <h1 className="text-3xl md:text-4xl font-extrabold">Order placed</h1>
-              <p className="mt-2 text-sm text-white/70">
+              <p className="mt-2 text-sm text-gray-600">
                 Status:{' '}
-                <span className="text-white font-semibold">{latestOrder?.status || 'paid'}</span>
+                <span className="text-gray-900 font-semibold">{latestOrder?.status || 'confirmed'}</span>
               </p>
-              <p className="mt-1 text-sm text-white/70">
-                Order: <span className="text-white font-semibold">{orderId || latestOrder?._id || '—'}</span> • Table:{' '}
-                <span className="text-white font-semibold">#{tableNo}</span>
+              <p className="mt-1 text-sm text-gray-600">
+                Order: <span className="text-gray-900 font-semibold">{orderId || latestOrder?._id || '—'}</span> • Table:{' '}
+                <span className="text-gray-900 font-semibold">#{tableNo}</span>
               </p>
             </div>
 
@@ -81,15 +81,15 @@ export default function KioskOrderSuccess() {
           </div>
 
           <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="rounded-2xl border border-white/10 bg-black/25 p-5">
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
               <h2 className="font-extrabold text-lg">Summary</h2>
               <div className="mt-4 space-y-3 max-h-[260px] overflow-auto pr-1">
                 {cart.map((i) => {
                   const idKey = i.dish?.dishId || i.dish?._id
                   return (
                     <div key={idKey} className="flex items-center justify-between gap-3">
-                      <p className="text-sm text-white/85 truncate">{i.dish?.name}</p>
-                      <p className="text-sm text-white/70 shrink-0">
+                      <p className="text-sm text-gray-900 truncate">{i.dish?.name}</p>
+                      <p className="text-sm text-gray-600 shrink-0">
                         ×{i.qty} • ₹{Math.round((Number(i.qty) || 0) * (Number(i.dish?.price) || 0))}
                       </p>
                     </div>
@@ -97,20 +97,20 @@ export default function KioskOrderSuccess() {
                 })}
               </div>
               <div className="mt-5 flex items-center justify-between">
-                <p className="text-white/70">Total</p>
+                <p className="text-gray-600">Total</p>
                 <p className="text-2xl font-extrabold">₹{Math.round(total)}</p>
               </div>
 
               <button
                 onClick={callWaiter}
                 disabled={waiterCalling}
-                className="mt-5 w-full h-12 rounded-2xl bg-white text-neutral-900 font-semibold hover:bg-white/90 disabled:opacity-50 transition"
+                className="mt-5 w-full h-12 rounded-2xl bg-gray-900 text-white font-semibold hover:bg-gray-800 disabled:opacity-50 transition"
               >
                 {waiterCalling ? 'Calling…' : 'Call Waiter'}
               </button>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-black/25 p-5">
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
               <h2 className="font-extrabold text-lg">Leave a review</h2>
               <div className="mt-4">
                 <StarRating value={rating} onChange={setRating} />
@@ -118,21 +118,21 @@ export default function KioskOrderSuccess() {
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
                   placeholder="Tell us what you liked…"
-                  className="mt-4 w-full min-h-28 rounded-2xl bg-black/30 border border-white/10 p-4 text-sm outline-none focus:border-white/25 resize-none"
+                  className="mt-4 w-full min-h-28 rounded-2xl bg-white border border-gray-300 p-4 text-sm outline-none focus:border-gray-500 resize-none"
                 />
               </div>
 
               <button
                 onClick={submitReview}
                 disabled={!orderId || reviewSaving}
-                className="mt-4 w-full h-12 rounded-2xl border border-white/15 bg-white/5 hover:bg-white/10 disabled:opacity-50 transition"
+                className="mt-4 w-full h-12 rounded-2xl border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-50 transition"
               >
                 {reviewSaving ? 'Submitting…' : 'Submit review'}
               </button>
 
               <button
                 onClick={newOrder}
-                className="mt-4 w-full h-12 rounded-2xl bg-white text-neutral-900 font-extrabold hover:bg-white/90 transition"
+                className="mt-4 w-full h-12 rounded-2xl bg-gray-900 text-white font-extrabold hover:bg-gray-800 transition"
               >
                 New Order
               </button>
@@ -156,11 +156,11 @@ function StarRating({ value, onChange }) {
             key={v}
             onClick={() => onChange(v)}
             className={`w-10 h-10 rounded-xl border transition ${
-              active ? 'bg-amber-500/20 border-amber-400/30' : 'bg-white/5 border-white/10 hover:bg-white/10'
+              active ? 'bg-amber-100 border-amber-300' : 'bg-white border-gray-300 hover:bg-gray-50'
             }`}
             aria-label={`${v} stars`}
           >
-            <span className={`text-xl ${active ? 'text-amber-300' : 'text-white/55'}`}>★</span>
+            <span className={`text-xl ${active ? 'text-amber-500' : 'text-gray-400'}`}>★</span>
           </button>
         )
       })}
@@ -170,7 +170,7 @@ function StarRating({ value, onChange }) {
 
 function SuccessMark() {
   return (
-    <div className="w-28 h-28 rounded-3xl border border-emerald-400/25 bg-emerald-500/10 flex items-center justify-center">
+    <div className="w-28 h-28 rounded-3xl border border-emerald-200 bg-emerald-50 flex items-center justify-center">
       <motion.svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
         <motion.circle
           cx="32"
@@ -184,7 +184,7 @@ function SuccessMark() {
         />
         <motion.path
           d="M22 33.5l6.5 6.5L43 25.5"
-          stroke="rgba(255,255,255,0.95)"
+          stroke="rgba(17,24,39,0.95)"
           strokeWidth="5"
           strokeLinecap="round"
           strokeLinejoin="round"

@@ -118,7 +118,6 @@ export default function KioskMenu() {
       const res = await kioskAxios.post('/user/order', { tableNo: Number(tableNo), dishes: dishIdsExpanded })
       const id = res.data?.orderId || res.data?.order?._id
       if (!id) throw new Error('Order placed, but no orderId returned')
-      await kioskAxios.post('/user/pay', { orderId: id })
       setOrderId(String(id))
       setDrawerOpen(false)
       setConfirmOpen(false)
@@ -140,24 +139,24 @@ export default function KioskMenu() {
             Your details
           </KioskBackButton>
           <div className="mt-3">
-            <p className="text-white/70 text-sm">Step 3 of 5</p>
+            <p className="text-gray-500 text-sm">Step 3 of 5</p>
             <h1 className="text-3xl sm:text-4xl font-extrabold mt-1 leading-none tracking-tight">Menu</h1>
-            <p className="mt-2 text-lg sm:text-2xl leading-none text-white/70">
+            <p className="mt-2 text-lg sm:text-2xl leading-none text-gray-600">
               Table #{tableNo}
               {dishes.length > 0 ? (
-                <span className="text-white/50 text-base sm:text-lg font-normal"> · {filtered.length} items</span>
+                <span className="text-gray-500 text-base sm:text-lg font-normal"> · {filtered.length} items</span>
               ) : null}
             </p>
           </div>
           <button
             onClick={() => navigate('/register', { state: { from: '/menu' } })}
-            className="text-sm sm:text-xl leading-none text-white/70 hover:text-white transition-colors"
+            className="text-sm sm:text-xl leading-none text-gray-600 hover:text-gray-900 transition-colors"
           >
             Edit details
           </button>
         </div>
 
-        {loading ? <p className="mt-4 text-white/60">Loading dishes…</p> : null}
+        {loading ? <p className="mt-4 text-gray-500">Loading dishes…</p> : null}
         {error ? <p className="mt-4 text-red-300">{error}</p> : null}
 
         {!loading && !error && (
@@ -166,8 +165,8 @@ export default function KioskMenu() {
               <label className="sr-only" htmlFor="kiosk-menu-search">
                 Search menu
               </label>
-              <div className="flex items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-3 py-2.5 sm:py-3">
-                <span className="text-white/50 text-lg" aria-hidden>
+              <div className="flex items-center gap-2 rounded-2xl border border-gray-300 bg-white px-3 py-2.5 sm:py-3">
+                <span className="text-gray-500 text-lg" aria-hidden>
                   🔍
                 </span>
                 <input
@@ -175,21 +174,21 @@ export default function KioskMenu() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search by dish name…"
-                  className="w-full min-w-0 bg-transparent text-sm sm:text-base text-white placeholder:text-white/40 outline-none"
+                  className="w-full min-w-0 bg-transparent text-sm sm:text-base text-gray-900 placeholder:text-gray-400 outline-none"
                 />
               </div>
             </div>
 
             {grouped.length === 0 ? (
-              <p className="text-white/60 py-6 text-center">
+              <p className="text-gray-500 py-6 text-center">
                 {search.trim() ? 'No dishes match your search.' : 'No dishes in the menu yet.'}
               </p>
             ) : (
               <div
-                className="sticky top-0 z-30 -mx-4 sm:-mx-5 px-4 sm:px-5 py-2 bg-neutral-950/90 backdrop-blur-md border-b border-white/5"
+                className="sticky top-0 z-30 -mx-4 sm:-mx-5 px-4 sm:px-5 py-2 bg-white border-b border-gray-200"
                 style={{ top: 0 }}
               >
-                <p className="text-xs text-white/50 uppercase tracking-wider mb-1.5">Categories</p>
+                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1.5">Categories</p>
                 <div
                   ref={chipRowRef}
                   className="flex gap-2 overflow-x-auto overflow-y-hidden pb-0.5 -mx-0.5 px-0.5 scroll-smooth [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5"
@@ -202,8 +201,8 @@ export default function KioskMenu() {
                     }}
                     className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold border transition-colors ${
                       focusCategory === '__all__'
-                        ? 'bg-white text-neutral-900 border-white'
-                        : 'bg-white/5 text-white/90 border-white/15 hover:bg-white/10'
+                        ? 'bg-gray-900 text-white border-gray-900'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                     }`}
                   >
                     All
@@ -218,8 +217,8 @@ export default function KioskMenu() {
                       }}
                       className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium border max-w-[min(200px,70vw)] truncate transition-colors ${
                         focusCategory === name
-                          ? 'bg-amber-500/90 text-neutral-900 border-amber-400/80'
-                          : 'bg-white/5 text-white/90 border-white/15 hover:bg-white/10'
+                          ? 'bg-amber-200 text-amber-900 border-amber-300'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                       }`}
                     >
                       {name}
@@ -239,8 +238,8 @@ export default function KioskMenu() {
                     aria-label={name}
                   >
                     <div className="flex items-baseline justify-between gap-2 mb-3">
-                      <h2 className="text-lg sm:text-xl font-extrabold text-white tracking-tight">{name}</h2>
-                      <span className="text-sm text-white/50">{row.length} items</span>
+                      <h2 className="text-lg sm:text-xl font-extrabold text-gray-900 tracking-tight">{name}</h2>
+                      <span className="text-sm text-gray-500">{row.length} items</span>
                     </div>
                     <div className="overflow-x-auto overflow-y-hidden -mx-4 sm:-mx-5 px-4 sm:px-5 pb-1 scroll-smooth snap-x snap-mandatory [scrollbar-width:thin]">
                       <ul className="flex gap-3 w-max pr-1">
@@ -254,9 +253,9 @@ export default function KioskMenu() {
                                 initial={{ opacity: 0, y: 6 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.15, ease: 'easeOut' }}
-                                className="h-full rounded-2xl overflow-hidden border border-white/10 bg-neutral-900/95 flex flex-col"
+                                className="h-full rounded-2xl overflow-hidden border border-gray-200 bg-white flex flex-col shadow-sm"
                               >
-                                <div className="h-28 sm:h-32 lg:h-36 bg-white/5 shrink-0">
+                                <div className="h-28 sm:h-32 lg:h-36 bg-gray-100 shrink-0">
                                   {dish.imageUrl ? (
                                     <img
                                       src={dish.imageUrl}
@@ -264,20 +263,20 @@ export default function KioskMenu() {
                                       className="h-full w-full object-cover"
                                     />
                                   ) : (
-                                    <div className="h-full w-full bg-gradient-to-br from-amber-500/15 to-white/5 flex items-end justify-end p-2">
-                                      <span className="text-[10px] text-white/40 font-medium">No image</span>
+                                    <div className="h-full w-full bg-gradient-to-br from-amber-100 to-gray-100 flex items-end justify-end p-2">
+                                      <span className="text-[10px] text-gray-500 font-medium">No image</span>
                                     </div>
                                   )}
                                 </div>
                                 <div className="p-3 flex flex-col flex-1 min-h-0">
                                   <p className="text-sm sm:text-base font-bold leading-tight line-clamp-2">{dish.name}</p>
-                                  <p className="text-xs text-white/55 line-clamp-1 mt-0.5 min-h-4">{ingredients || '\u00a0'}</p>
+                                  <p className="text-xs text-gray-500 line-clamp-1 mt-0.5 min-h-4">{ingredients || '\u00a0'}</p>
                                   <p className="text-base sm:text-lg font-extrabold mt-auto pt-2">₹{dish.price}</p>
-                                  <div className="mt-2 h-10 sm:h-10 rounded-xl border border-white/15 bg-black/35 flex items-center justify-between px-1.5">
+                                  <div className="mt-2 h-10 sm:h-10 rounded-xl border border-gray-300 bg-gray-50 flex items-center justify-between px-1.5">
                                     <button
                                       type="button"
                                       onClick={() => setQty(dish, Math.max(0, qty - 1))}
-                                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white/10 hover:bg-white/15 transition text-xl leading-none"
+                                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gray-200 hover:bg-gray-300 transition text-xl leading-none"
                                     >
                                       −
                                     </button>
@@ -285,7 +284,7 @@ export default function KioskMenu() {
                                     <button
                                       type="button"
                                       onClick={() => setQty(dish, qty + 1)}
-                                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white/10 hover:bg-white/15 transition text-xl leading-none"
+                                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gray-200 hover:bg-gray-300 transition text-xl leading-none"
                                     >
                                       +
                                     </button>
@@ -311,7 +310,7 @@ export default function KioskMenu() {
         className="fixed bottom-4 sm:bottom-6 right-4 sm:right-5 z-40 h-12 sm:h-14 px-4 sm:px-5 rounded-2xl bg-white text-neutral-900 font-extrabold shadow-xl hover:bg-white/90 transition flex items-center gap-2 sm:gap-3"
       >
         <span className="text-base sm:text-xl">Cart</span>
-        <span className="min-w-7 h-7 sm:min-w-8 sm:h-8 px-2 rounded-xl bg-neutral-900 text-white flex items-center justify-center text-sm sm:text-lg">
+        <span className="min-w-7 h-7 sm:min-w-8 sm:h-8 px-2 rounded-xl bg-gray-900 text-white flex items-center justify-center text-sm sm:text-lg">
           {cartCount}
         </span>
       </button>
@@ -324,9 +323,9 @@ export default function KioskMenu() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <div className="absolute inset-0 bg-black/70" onClick={() => setDrawerOpen(false)} role="presentation" />
+            <div className="absolute inset-0 bg-black/40" onClick={() => setDrawerOpen(false)} role="presentation" />
             <motion.div
-              className="relative w-full max-w-3xl rounded-t-3xl border border-white/10 bg-neutral-950 p-6 pb-8"
+              className="relative w-full max-w-3xl rounded-t-3xl border border-gray-200 bg-white p-6 pb-8"
               initial={{ y: 40 }}
               animate={{ y: 0 }}
               exit={{ y: 40 }}
@@ -336,7 +335,7 @@ export default function KioskMenu() {
                 <h2 className="text-xl font-extrabold">Your cart</h2>
                 <button
                   type="button"
-                  className="text-sm text-white/70 hover:text-white"
+                  className="text-sm text-gray-600 hover:text-gray-900"
                   onClick={() => setDrawerOpen(false)}
                 >
                   Close
@@ -351,17 +350,17 @@ export default function KioskMenu() {
                     return (
                       <div
                         key={idKey}
-                        className="rounded-2xl border border-white/10 bg-white/5 p-4 flex items-center justify-between gap-4"
+                        className="rounded-2xl border border-gray-200 bg-gray-50 p-4 flex items-center justify-between gap-4"
                       >
                         <div className="min-w-0">
                           <p className="font-semibold truncate">{i.dish?.name}</p>
-                          <p className="text-xs text-white/60 mt-1">₹{i.dish?.price} each</p>
+                          <p className="text-xs text-gray-500 mt-1">₹{i.dish?.price} each</p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <button
                             type="button"
                             onClick={() => setQty(i.dish, qty - 1)}
-                            className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/15 transition text-xl"
+                            className="w-10 h-10 rounded-xl bg-gray-200 hover:bg-gray-300 transition text-xl"
                           >
                             −
                           </button>
@@ -369,7 +368,7 @@ export default function KioskMenu() {
                           <button
                             type="button"
                             onClick={() => setQty(i.dish, qty + 1)}
-                            className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/15 transition text-xl"
+                            className="w-10 h-10 rounded-xl bg-gray-200 hover:bg-gray-300 transition text-xl"
                           >
                             +
                           </button>
@@ -378,12 +377,12 @@ export default function KioskMenu() {
                     )
                   })
                 ) : (
-                  <p className="text-white/60">Your cart is empty. Add dishes from the menu.</p>
+                  <p className="text-gray-500">Your cart is empty. Add dishes from the menu.</p>
                 )}
               </div>
 
               <div className="mt-6">
-                <label className="block text-xs text-white/70 mb-2">Allergy notes (carried with order)</label>
+                <label className="block text-xs text-gray-600 mb-2">Allergy notes (carried with order)</label>
                 <input
                   value={(allergies || []).join(', ')}
                   onChange={(e) => {
@@ -394,12 +393,12 @@ export default function KioskMenu() {
                     setAllergies(Array.from(new Set(next)))
                   }}
                   placeholder="e.g. nuts, dairy"
-                  className="w-full h-12 rounded-2xl bg-black/30 border border-white/10 px-4 text-sm outline-none focus:border-white/25"
+                  className="w-full h-12 rounded-2xl bg-white border border-gray-300 px-4 text-sm outline-none focus:border-gray-500"
                 />
               </div>
 
               <div className="mt-6 flex items-center justify-between">
-                <p className="text-white/70">Total</p>
+                <p className="text-gray-600">Total</p>
                 <p className="text-2xl font-extrabold">₹{Math.round(total)}</p>
               </div>
 
@@ -425,19 +424,19 @@ export default function KioskMenu() {
             exit={{ opacity: 0 }}
           >
             <div
-              className="absolute inset-0 bg-black/80"
+              className="absolute inset-0 bg-black/45"
               onClick={() => !placing && setConfirmOpen(false)}
               role="presentation"
             />
             <motion.div
-              className="relative w-full max-w-md rounded-3xl border border-white/15 bg-neutral-950 p-6 shadow-2xl"
+              className="relative w-full max-w-md rounded-3xl border border-gray-200 bg-white p-6 shadow-2xl"
               initial={{ scale: 0.96, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.96, opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
               <h2 className="text-xl font-extrabold">Confirm your order</h2>
-              <p className="mt-1 text-sm text-white/60">Table #{tableNo} · review items, then confirm.</p>
+              <p className="mt-1 text-sm text-gray-600">Table #{tableNo} · review items, then confirm.</p>
 
               <ul className="mt-5 max-h-[40vh] overflow-auto space-y-2 pr-1">
                 {cart.map((i) => {
@@ -446,10 +445,10 @@ export default function KioskMenu() {
                   return (
                     <li
                       key={idKey}
-                      className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm"
+                      className="flex items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm"
                     >
                       <span className="font-medium truncate">{i.dish?.name}</span>
-                      <span className="text-white/60 shrink-0">
+                      <span className="text-gray-600 shrink-0">
                         ×{qty} · ₹{Math.round(qty * (Number(i.dish?.price) || 0))}
                       </span>
                     </li>
@@ -457,8 +456,8 @@ export default function KioskMenu() {
                 })}
               </ul>
 
-              <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-4">
-                <span className="text-white/70">Total</span>
+              <div className="mt-4 flex items-center justify-between border-t border-gray-200 pt-4">
+                <span className="text-gray-600">Total</span>
                 <span className="text-2xl font-extrabold">₹{Math.round(total)}</span>
               </div>
 
@@ -467,7 +466,7 @@ export default function KioskMenu() {
                   type="button"
                   disabled={placing}
                   onClick={() => setConfirmOpen(false)}
-                  className="flex-1 h-12 rounded-2xl border border-white/15 bg-white/5 font-semibold hover:bg-white/10 disabled:opacity-50"
+                  className="flex-1 h-12 rounded-2xl border border-gray-300 bg-white font-semibold hover:bg-gray-50 disabled:opacity-50"
                 >
                   Back
                 </button>

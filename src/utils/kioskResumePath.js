@@ -13,7 +13,6 @@ export function getKioskResumePath(s) {
 
   function valid(path) {
     if (path === '/tables') return true
-    if (path === '/payment') return tableNo != null && user != null && orderId != null
     if (path === '/order-tracking') return tableNo != null && user != null && orderId != null
     if (path === '/order-success') return tableNo != null && user != null
     return false

@@ -1,6 +1,6 @@
 const styles = {
   created:   'bg-yellow-100 text-yellow-800',
-  paid:      'bg-purple-100 text-purple-800',
+  confirmed: 'bg-purple-100 text-purple-800',
   pending:   'bg-yellow-100 text-yellow-800',
   preparing: 'bg-blue-100 text-blue-800',
   served:    'bg-green-100 text-green-800',

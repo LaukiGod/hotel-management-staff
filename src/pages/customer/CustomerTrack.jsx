@@ -21,6 +21,7 @@ export default function CustomerTrack() {
   const [loading, setLoading] = useState(true)
   const [rating, setRating] = useState(5)
   const [comment, setComment] = useState('')
+  const [mealCompleted, setMealCompleted] = useState(false)
 
   async function loadOrders() {
     if (!session?.tableNo) return
@@ -63,7 +64,7 @@ export default function CustomerTrack() {
         phoneNo: session.phoneNo,
         tableNo: session.tableNo,
       })
-      alert('Meal marked complete.')
+      setMealCompleted(true)
     } catch (e) {
       alert(e.message)
     }
@@ -96,6 +97,10 @@ export default function CustomerTrack() {
         <p className="text-sm text-gray-500">Loading...</p>
       </CustomerLayout>
     )
+  }
+
+  if (mealCompleted) {
+    return <MealCompletionScreen />
   }
 
   return (
@@ -180,6 +185,71 @@ export default function CustomerTrack() {
       <button onClick={exitTable} className="mt-6 text-sm text-gray-500 hover:text-gray-800">
         Exit Table Session
       </button>
+    </CustomerLayout>
+  )
+}
+
+function MealCompletionScreen() {
+  const navigate = useNavigate()
+  const [sparkled, setSparkled] = useState(false)
+
+  useEffect(() => { setSparkled(true) }, [])
+
+  function handleExit() {
+    clearCustomerSession()
+    navigate('/tables', { replace: true })
+  }
+
+  return (
+    <CustomerLayout title="Meal Completed">
+      <div className="flex flex-col items-center justify-center text-center py-12 px-4">
+
+        {/* Icon with sparkle burst */}
+        <div className="relative mb-6">
+          <div className="w-18 h-18 bg-emerald-100 rounded-full flex items-center justify-center w-[72px] h-[72px]">
+            <svg className="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+        </div>
+
+        <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+          Thank you for dining with us!
+        </h2>
+        <p className="text-gray-500 text-sm max-w-xs mb-8 leading-relaxed">
+          We hope you enjoyed every bite. Your table has been cleared — see you next time.
+        </p>
+
+        {/* Feel-good tiles */}
+        <div className="grid grid-cols-3 gap-2.5 w-full max-w-xs mb-8">
+          {[
+            { emoji: '🍽️', label: 'Great food' },
+            { emoji: '😊', label: 'Warm service' },
+            { emoji: '✨', label: 'Come again' },
+          ].map(({ emoji, label }) => (
+            <div key={label} className="bg-gray-50 rounded-xl p-3 text-center">
+              <div className="text-xl mb-1">{emoji}</div>
+              <p className="text-xs text-gray-500 leading-tight">{label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Actions */}
+        <div className="w-full max-w-xs space-y-2.5">
+          <button
+            onClick={() => navigate('/tables')}
+            className="w-full bg-gray-900 text-white py-3 rounded-xl text-sm font-medium hover:bg-gray-800"
+          >
+            Return to table selection
+          </button>
+          <button
+            onClick={handleExit}
+            className="w-full bg-white text-gray-600 py-3 rounded-xl text-sm border border-gray-200 hover:bg-gray-50"
+          >
+            Exit session
+          </button>
+        </div>
+      </div>
     </CustomerLayout>
   )
 }

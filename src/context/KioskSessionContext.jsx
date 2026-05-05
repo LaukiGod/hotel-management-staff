@@ -1,4 +1,5 @@
-import { createContext, useContext, useMemo, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { KIOSK_SESSION_CLEARED_EVENT } from '../utils/sessionCoordination'
 
 const STORAGE_KEY = 'smart-restaurant-kiosk-session-v1'
 
@@ -34,8 +35,26 @@ function loadInitial() {
 
 const KioskSessionContext = createContext(null)
 
+const EMPTY_KIOSK_STATE = {
+  tableNo: null,
+  user: null,
+  cart: [],
+  orderId: null,
+  kioskPath: null,
+  allergies: [],
+  detailsDraft: { name: '', phoneNo: '', allergies: [] },
+}
+
 export function KioskSessionProvider({ children }) {
   const [state, setState] = useState(loadInitial)
+
+  useEffect(() => {
+    function onExternalClear() {
+      setState({ ...EMPTY_KIOSK_STATE })
+    }
+    window.addEventListener(KIOSK_SESSION_CLEARED_EVENT, onExternalClear)
+    return () => window.removeEventListener(KIOSK_SESSION_CLEARED_EVENT, onExternalClear)
+  }, [])
 
   function persist(updater) {
     setState((prev) => {
@@ -94,8 +113,7 @@ export function KioskSessionProvider({ children }) {
     }
 
     function resetSession() {
-      const next = { tableNo: null, user: null, cart: [], orderId: null, kioskPath: null, allergies: [], detailsDraft: { name: '', phoneNo: '', allergies: [] } }
-      setState(next)
+      setState({ ...EMPTY_KIOSK_STATE })
       localStorage.removeItem(STORAGE_KEY)
     }
 

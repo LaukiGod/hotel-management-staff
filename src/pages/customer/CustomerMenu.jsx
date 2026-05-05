@@ -47,6 +47,7 @@ export default function CustomerMenu() {
   const [detailsModalOpen, setDetailsModalOpen] = useState(false)
   const [detailName, setDetailName] = useState('')
   const [detailPhone, setDetailPhone] = useState('')
+  const [detailAllergiesText, setDetailAllergiesText] = useState('')
   const [activeCategory, setActiveCategory] = useState('All')
   const [selectedDish, setSelectedDish] = useState(null)
   const [search, setSearch] = useState('')
@@ -69,7 +70,7 @@ export default function CustomerMenu() {
     if (!sessionReady) return
     const s = getCustomerSession()
     if (!s?.tableNo) {
-      navigate('/customer/login', { replace: true })
+      navigate('/tables', { replace: true })
       return
     }
     setLoading(true)
@@ -134,7 +135,6 @@ export default function CustomerMenu() {
     const orderRes = await api.post('/user/order', { tableNo: s.tableNo, dishes: selectedDishIds })
     const oid = orderRes?.orderId || orderRes?.order?._id
     if (!oid) throw new Error('No order id returned')
-    await api.post('/user/pay', { orderId: oid })
     setCheckoutConfirmOpen(false)
     setDetailsModalOpen(false)
     navigate('/customer/track')
@@ -160,6 +160,13 @@ export default function CustomerMenu() {
     executePlaceOrder()
   }
 
+  function parseAllergiesFromText(text) {
+    return String(text || '')
+      .split(/[,;\n]/)
+      .map((x) => x.trim().toLowerCase())
+      .filter(Boolean)
+  }
+
   async function submitDetailsAndPlaceOrder() {
     const s = getCustomerSession()
     const digits = String(detailPhone || '').replace(/\D/g, '').slice(0, 10)
@@ -172,14 +179,19 @@ export default function CustomerMenu() {
       return
     }
     if (!s?.tableNo) return
+    const allergyList = parseAllergiesFromText(detailAllergiesText)
     setOrdering(true)
     try {
       const result = await api.post('/user/login-table', {
         tableNo: s.tableNo,
         name: detailName.trim(),
-        phoneNo: digits,
+        phoneNo: digits || '',
+        allowExistingSession: true,
       })
       const u = result?.user
+      if (allergyList.length) {
+        await api.post('/user/set-allergies', { tableNo: s.tableNo, allergies: allergyList })
+      }
       setCustomerSession({
         tableNo: s.tableNo,
         name: u?.name || detailName.trim(),
@@ -189,6 +201,7 @@ export default function CustomerMenu() {
         resumePath: '/customer/menu',
       })
       setSessionRev((x) => x + 1)
+      setDetailAllergiesText('')
       await submitOrderOnly()
     } catch (e) {
       alert(e.message)
@@ -211,14 +224,14 @@ export default function CustomerMenu() {
 
   return (
     <CustomerLayout title="Menu">
-      <div className="mx-auto w-full max-w-lg space-y-4 pb-24">
+      <div className="mx-auto w-full max-w-5xl space-y-4 pb-32">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs text-gray-500">Table #{session?.tableNo}</p>
             <h2 className="text-xl font-bold text-gray-900">Dishes</h2>
             {quickBrowse ? (
               <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1.5 mt-2">
-                Quick order: we will ask for your name and phone when you confirm your order.
+                Quick order: we will ask for your name when you confirm your order (phone and allergies optional).
               </p>
             ) : null}
             {!loading && (
@@ -340,7 +353,7 @@ export default function CustomerMenu() {
                 ))}
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {menuForView.map((dish) => (
                   <div
                     key={dish._id}
@@ -348,33 +361,33 @@ export default function CustomerMenu() {
                     onKeyDown={(e) => e.key === 'Enter' && setSelectedDish(dish)}
                     role="button"
                     tabIndex={0}
-                    className="bg-white border border-gray-200 rounded-2xl p-2.5 focus:outline-none focus:ring-2 focus:ring-gray-400"
+                    className="bg-white border border-gray-200 rounded-2xl p-3 focus:outline-none focus:ring-2 focus:ring-gray-400"
                   >
                     <div className="flex gap-3">
                       {dish.imageUrl ? (
-                        <img src={dish.imageUrl} alt="" className="w-20 h-20 object-cover rounded-xl" />
+                        <img src={dish.imageUrl} alt="" className="w-20 h-20 object-cover rounded-xl shrink-0" />
                       ) : (
-                        <div className="w-20 h-20 rounded-xl bg-gray-100 flex items-center justify-center text-xs text-gray-500">
+                        <div className="w-20 h-20 shrink-0 rounded-xl bg-gray-100 flex items-center justify-center text-xs text-gray-500">
                           No image
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-900 truncate">{dish.name}</p>
-                        <p className="text-xs text-gray-500 truncate mt-0.5">{dish.recipe || 'Freshly prepared'}</p>
-                        <div className="mt-2 flex items-center justify-between">
-                          <p className="text-sm font-semibold text-gray-900">Rs {dish.price}</p>
+                        <p className="text-xs text-gray-500 line-clamp-2 mt-0.5">{dish.recipe || 'Freshly prepared'}</p>
+                        <div className="mt-2 flex items-center justify-between gap-2">
+                          <p className="text-sm font-semibold text-gray-900 shrink-0">Rs {dish.price}</p>
                           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                             <button
                               type="button"
-                              className="w-7 h-7 rounded-lg bg-gray-100 text-sm"
+                              className="w-8 h-8 rounded-lg bg-gray-100 text-sm"
                               onClick={() => changeQty(dish._id, -1)}
                             >
                               -
                             </button>
-                            <span className="text-sm font-medium w-5 text-center">{cart[dish._id] || 0}</span>
+                            <span className="text-sm font-medium w-6 text-center">{cart[dish._id] || 0}</span>
                             <button
                               type="button"
-                              className="w-7 h-7 rounded-lg bg-gray-900 text-white text-sm"
+                              className="w-8 h-8 rounded-lg bg-gray-900 text-white text-sm"
                               onClick={() => changeQty(dish._id, 1)}
                             >
                               +
@@ -437,7 +450,7 @@ export default function CustomerMenu() {
           <div className="absolute inset-0 bg-black/50" onClick={() => !ordering && setDetailsModalOpen(false)} role="presentation" />
           <div className="relative w-full max-w-md bg-white rounded-2xl border border-gray-200 shadow-xl p-5">
             <h2 className="text-lg font-bold text-gray-900">Your details</h2>
-            <p className="text-sm text-gray-500 mt-1">Table #{session?.tableNo} — required to place this order.</p>
+            <p className="text-sm text-gray-500 mt-1">Table #{session?.tableNo} — name is required to place this order.</p>
             <div className="mt-4 space-y-3">
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Name</label>
@@ -449,13 +462,23 @@ export default function CustomerMenu() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Phone (10 digits)</label>
+                <label className="block text-xs text-gray-500 mb-1">Phone (optional, 10 digits)</label>
                 <input
                   value={detailPhone}
                   onChange={(e) => setDetailPhone(String(e.target.value || '').replace(/\D/g, '').slice(0, 10))}
                   inputMode="numeric"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                   autoComplete="tel"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Allergies (optional, comma-separated)</label>
+                <textarea
+                  value={detailAllergiesText}
+                  onChange={(e) => setDetailAllergiesText(e.target.value)}
+                  rows={2}
+                  placeholder="e.g. nuts, shellfish"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none"
                 />
               </div>
             </div>
@@ -520,7 +543,7 @@ export default function CustomerMenu() {
         </div>
       )}
 
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-md bg-white border border-gray-200 rounded-2xl px-3 py-2.5 shadow-lg">
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-5xl bg-white border border-gray-200 rounded-2xl px-3 sm:px-4 py-2.5 shadow-lg">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
             <p className="text-xs text-gray-500">Items: {selectedDishIds.length}</p>
@@ -530,7 +553,7 @@ export default function CustomerMenu() {
             type="button"
             onClick={() => selectedDishIds.length && setCheckoutConfirmOpen(true)}
             disabled={ordering || selectedDishIds.length === 0}
-            className="px-4 py-2 text-sm bg-gray-900 text-white rounded-xl disabled:opacity-50"
+            className="px-4 py-2 text-sm bg-gray-900 text-white rounded-xl disabled:opacity-50 whitespace-nowrap"
           >
             Confirm order
           </button>

@@ -1,7 +1,6 @@
 import { useAuth } from '../context/AuthContext'
 import { Navigate } from 'react-router-dom'
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+import { API_BASE_URL } from '../config/api'
 
 export default function Login() {
   const { token } = useAuth()
@@ -9,7 +8,7 @@ export default function Login() {
   if (token) return <Navigate to="/admin/dashboard" replace />
 
   function handleGoogleLogin() {
-    window.location.href = `${API_BASE}/auth/google`
+    window.location.href = `${API_BASE_URL}/auth/google`
   }
 
   return (

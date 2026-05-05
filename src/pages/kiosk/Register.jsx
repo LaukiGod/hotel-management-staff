@@ -101,10 +101,10 @@ export default function KioskRegister() {
   return (
     <KioskShell>
       <div className="min-h-screen w-full flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-white/5 backdrop-blur p-7">
-          <p className="text-white/70 text-sm">Step 2 of 5</p>
+        <div className="w-full max-w-lg rounded-3xl border border-gray-200 bg-white p-7 shadow-sm">
+          <p className="text-gray-500 text-sm">Step 2 of 5</p>
           <h1 className="text-3xl font-extrabold mt-1">Your details</h1>
-          <p className="mt-2 text-white/70 text-sm">Table #{tableNo} is pre-selected.</p>
+          <p className="mt-2 text-gray-600 text-sm">Table #{tableNo} is pre-selected.</p>
 
           <form onSubmit={submit} className="mt-6 space-y-4">
             <Field label="Name" value={name} onChange={setName} placeholder="Your name" />
@@ -120,7 +120,7 @@ export default function KioskRegister() {
             />
 
             <div>
-              <label className="block text-xs text-white/70 mb-2">Allergies (optional)</label>
+              <label className="block text-xs text-gray-600 mb-2">Allergies (optional)</label>
 
               <div className="flex flex-wrap gap-2 mb-3">
                 {allergies.map((a) => (
@@ -128,7 +128,7 @@ export default function KioskRegister() {
                     type="button"
                     key={a}
                     onClick={() => removeAllergy(a)}
-                    className="px-3 py-1.5 rounded-full bg-amber-500/15 text-amber-200 border border-amber-400/25 text-xs hover:bg-amber-500/25 transition"
+                    className="px-3 py-1.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200 text-xs hover:bg-amber-200 transition"
                   >
                     {a} <span className="opacity-75">×</span>
                   </button>
@@ -146,12 +146,12 @@ export default function KioskRegister() {
                     }
                   }}
                   placeholder="Type and press Enter (e.g. nuts)"
-                  className="flex-1 h-12 rounded-2xl bg-black/30 border border-white/10 px-4 text-sm outline-none focus:border-white/25"
+                  className="flex-1 h-12 rounded-2xl bg-white border border-gray-300 px-4 text-sm outline-none focus:border-gray-500"
                 />
                 <button
                   type="button"
                   onClick={() => addAllergy(allergyInput)}
-                  className="h-12 px-4 rounded-2xl border border-white/15 bg-white/5 hover:bg-white/10 transition"
+                  className="h-12 px-4 rounded-2xl border border-gray-300 bg-white hover:bg-gray-50 transition"
                 >
                   Add
                 </button>
@@ -163,7 +163,7 @@ export default function KioskRegister() {
                     type="button"
                     key={p}
                     onClick={() => addAllergy(p)}
-                    className="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs text-white/75 hover:bg-white/10 transition"
+                    className="px-3 py-1.5 rounded-full bg-gray-50 border border-gray-300 text-xs text-gray-700 hover:bg-gray-100 transition"
                   >
                     + {p}
                   </button>
@@ -171,12 +171,12 @@ export default function KioskRegister() {
               </div>
             </div>
 
-            {error ? <p className="text-sm text-red-300">{error}</p> : null}
+            {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
             <button
               type="submit"
               disabled={!canSubmit || loading}
-              className="w-full h-12 rounded-2xl bg-white text-neutral-900 font-semibold hover:bg-white/90 disabled:opacity-50 transition flex items-center justify-center gap-2"
+              className="w-full h-12 rounded-2xl bg-gray-900 text-white font-semibold hover:bg-gray-800 disabled:opacity-50 transition flex items-center justify-center gap-2"
             >
               {loading ? <Spinner /> : null}
               Continue to Menu
@@ -186,7 +186,7 @@ export default function KioskRegister() {
               type="button"
               onClick={changeTable}
               disabled={loading}
-              className="w-full text-sm text-white/70 hover:text-white transition-colors disabled:opacity-50"
+              className="w-full text-sm text-gray-600 hover:text-gray-900 transition-colors disabled:opacity-50"
             >
               Change table
             </button>
@@ -194,7 +194,7 @@ export default function KioskRegister() {
             <button
               type="button"
               onClick={() => navigate(cancelTo)}
-              className="w-full text-sm text-white/70 hover:text-white transition-colors"
+              className="w-full text-sm text-gray-600 hover:text-gray-900 transition-colors"
             >
               Cancel
             </button>
@@ -208,7 +208,7 @@ export default function KioskRegister() {
 function Field({ label, value, onChange, placeholder, inputMode, type = 'text', maxLength, hint }) {
   return (
     <div>
-      <label className="block text-xs text-white/70 mb-2">{label}</label>
+      <label className="block text-xs text-gray-600 mb-2">{label}</label>
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -217,16 +217,16 @@ function Field({ label, value, onChange, placeholder, inputMode, type = 'text', 
         type={type}
         maxLength={maxLength}
         autoComplete="off"
-        className="w-full h-12 rounded-2xl bg-black/30 border border-white/10 px-4 text-sm outline-none focus:border-white/25"
+        className="w-full h-12 rounded-2xl bg-white border border-gray-300 px-4 text-sm outline-none focus:border-gray-500"
       />
-      {hint ? <p className="mt-2 text-xs text-red-300">{hint}</p> : null}
+      {hint ? <p className="mt-2 text-xs text-red-600">{hint}</p> : null}
     </div>
   )
 }
 
 function Spinner() {
   return (
-    <span className="inline-block w-4 h-4 rounded-full border-2 border-neutral-900/30 border-t-neutral-900 animate-spin" />
+    <span className="inline-block w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
   )
 }
 

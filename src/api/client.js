@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+import { API_BASE_URL } from '../config/api'
 
 function getToken() {
   return sessionStorage.getItem('token')
@@ -12,7 +12,7 @@ export async function apiFetch(path, options = {}) {
     ...options.headers,
   }
 
-  const res = await fetch(`${BASE}${path}`, { ...options, headers, credentials: 'include' })
+  const res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers, credentials: 'include' })
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }))

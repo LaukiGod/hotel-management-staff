@@ -1,8 +1,8 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import KioskShell from '../../components/KioskShell'
 import { useKioskSession } from '../../context/KioskSessionContext'
-import { getKioskResumePath } from '../../utils/kioskResumePath'
+import { getCombinedResumePath, onKioskFlowExplicitStart } from '../../utils/sessionCoordination'
 import styles from './KioskWelcome.module.css'
 
 const FOOD_IMAGES = [
@@ -17,6 +17,7 @@ const STATS = [
   { val: '3', label: 'Order States', color: 'var(--text-secondary)' },
   { val: 'RT', label: 'Real-time', color: 'var(--ember)' },
 ]
+const RESUME_DELAY_MS = 1500
 
 function Logo({ size = 38 }) {
   return (
@@ -57,7 +58,7 @@ export default function KioskWelcome() {
     }
   }, [])
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (location.state?.kioskIntent === 'showWelcome') {
       stayOnWelcomeRef.current = true
       navigate('/', { replace: true, state: null })
@@ -66,14 +67,18 @@ export default function KioskWelcome() {
     if (stayOnWelcomeRef.current) {
       return
     }
-    const p = getKioskResumePath({ tableNo, user, orderId, kioskPath })
+    const p = getCombinedResumePath({ tableNo, user, orderId, kioskPath })
     if (p) {
-      navigate(p, { replace: true })
+      const t = setTimeout(() => {
+        navigate(p, { replace: true })
+      }, RESUME_DELAY_MS)
+      return () => clearTimeout(t)
     }
   }, [navigate, tableNo, user, orderId, kioskPath, location.state])
 
   useEffect(() => {
     function goTables() {
+      onKioskFlowExplicitStart()
       navigate('/tables')
     }
     function resetIdle() {
@@ -94,6 +99,7 @@ export default function KioskWelcome() {
 
   function proceed() {
     stayOnWelcomeRef.current = false
+    onKioskFlowExplicitStart()
     navigate('/tables')
   }
 

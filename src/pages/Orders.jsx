@@ -4,7 +4,7 @@ import StatusBadge from '../components/StatusBadge'
 import AllergyBadge from '../components/AllergyBadge'
 import AdminPanelHeader from '../components/AdminPanelHeader'
 
-const STATUSES = ['created', 'paid', 'preparing', 'served', 'completed']
+const STATUSES = ['created', 'confirmed', 'preparing', 'served', 'completed']
 
 const LINE_ITEM_STATUSES = ['queued', 'preparing', 'ready', 'served']
 
@@ -22,8 +22,12 @@ export default function Orders() {
   const [updating, setUpdating] = useState(null)
   const [selected, setSelected] = useState(null)
   const [addOpen, setAddOpen] = useState(false)
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [query, setQuery] = useState('')
+  const [hideCompleted, setHideCompleted] = useState(false)
   const [tables, setTables] = useState([])
   const [menu, setMenu] = useState([])
+  const [editMenuQuery, setEditMenuQuery] = useState('')
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState('')
   const [tableNo, setTableNo] = useState('')
@@ -110,6 +114,66 @@ export default function Orders() {
     [editCart]
   )
 
+  const statusCounts = useMemo(() => {
+    const base = { all: 0 }
+    for (const s of STATUSES) base[s] = 0
+    for (const o of Array.isArray(orders) ? orders : []) {
+      base.all += 1
+      const st = String(o?.status || '').toLowerCase()
+      if (base[st] != null) base[st] += 1
+    }
+    return base
+  }, [orders])
+
+  const visibleOrders = useMemo(() => {
+    const list = Array.isArray(orders) ? orders.slice() : []
+    const q = String(query || '').trim().toLowerCase()
+
+    const filtered = list.filter((o) => {
+      const st = String(o?.status || '').toLowerCase()
+      if (hideCompleted && st === 'completed') return false
+      if (statusFilter !== 'all' && st !== statusFilter) return false
+
+      if (!q) return true
+      const id = String(o?._id || '').toLowerCase()
+      const tno = String(o?.tableNo ?? '').toLowerCase()
+      const name = String(o?.customerName || '').toLowerCase()
+      const phone = String(o?.phoneNo || '').toLowerCase()
+      return id.includes(q) || tno.includes(q) || name.includes(q) || phone.includes(q)
+    })
+
+    function createdMs(o) {
+      const v = o?.createdAt
+      const ms = typeof v === 'number' ? v : Date.parse(v)
+      return Number.isFinite(ms) ? ms : 0
+    }
+
+    filtered.sort((a, b) => {
+      const ac = String(a?.status || '').toLowerCase() === 'completed'
+      const bc = String(b?.status || '').toLowerCase() === 'completed'
+      if (ac !== bc) return ac ? 1 : -1 // completed always at bottom
+
+      const at = createdMs(a)
+      const bt = createdMs(b)
+      if (bt !== at) return bt - at // newest first
+
+      return String(b?._id || '').localeCompare(String(a?._id || ''))
+    })
+
+    return filtered
+  }, [orders, query, hideCompleted, statusFilter])
+
+  const filteredEditMenu = useMemo(() => {
+    const list = Array.isArray(menu) ? menu : []
+    const q = String(editMenuQuery || '').trim().toLowerCase()
+    if (!q) return list
+    return list.filter((d) => {
+      const name = String(d?.name || '').toLowerCase()
+      const price = String(d?.price ?? '').toLowerCase()
+      return name.includes(q) || price.includes(q)
+    })
+  }, [menu, editMenuQuery])
+
   function openAdd() {
     setAddOpen(true)
     setTableNo('')
@@ -135,6 +199,7 @@ export default function Orders() {
     setEditingDetails(false)
     setDetailSaving(false)
     setDetailError('')
+    setEditMenuQuery('')
     setEditCart(buildCartFromOrder(order))
     setEditAllergiesInput(Array.isArray(order?.allergiesInput) ? order.allergiesInput.join(', ') : '')
 
@@ -274,11 +339,81 @@ export default function Orders() {
         <p className="p-4 text-red-500 sm:p-6">{error}</p>
       ) : (
     <div className="p-4 sm:p-6">
+      <div className="mb-4 rounded-2xl border border-gray-200 bg-white p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <div className="w-full lg:flex-1 lg:min-w-[360px]">
+            <div className="relative">
+              <svg
+                aria-hidden
+                viewBox="0 0 24 24"
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+                fill="none"
+              >
+                <path
+                  d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                />
+                <path
+                  d="M16.25 16.25 21 21"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search by order id / table / customer / phone"
+                className="w-full rounded-xl border border-gray-300 bg-white pl-9 pr-10 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {query.trim() ? (
+                <button
+                  type="button"
+                  onClick={() => setQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-lg p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                  aria-label="Clear search"
+                >
+                  <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4" fill="none">
+                    <path d="M6 6 18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    <path d="M18 6 6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </button>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="w-full lg:w-auto lg:shrink-0">
+            <div className="flex flex-wrap gap-2 lg:justify-end">
+              {['all', ...STATUSES].map((s) => {
+                const active = statusFilter === s
+                const label = s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)
+                const count = statusCounts[s]
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setStatusFilter(s)}
+                    className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                      active
+                        ? 'border-gray-900 bg-gray-900 text-white'
+                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    {label} <span className={active ? 'text-white/80' : 'text-gray-400'}>({count})</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {orders.length === 0 && (
+        {visibleOrders.length === 0 && (
           <p className="text-gray-400">No orders yet.</p>
         )}
-        {orders.map(order => (
+        {visibleOrders.map(order => (
           <button
             key={order._id}
             onClick={() => openOrder(order)}
@@ -311,8 +446,8 @@ export default function Orders() {
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setSelected(null)} />
-          <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <div className="relative w-full max-w-2xl max-h-[88vh] bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden flex flex-col">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 flex items-center justify-between shrink-0">
               <div>
                 <p className="text-xs text-gray-500">Order details</p>
                 <div className="flex items-center gap-2">
@@ -324,7 +459,7 @@ export default function Orders() {
               <button onClick={() => setSelected(null)} className="text-sm text-gray-500 hover:text-gray-900">Close</button>
             </div>
 
-            <div className="p-6 space-y-5">
+            <div className="p-4 sm:p-6 space-y-5 overflow-y-auto">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm text-gray-600">
                   {new Date(selected.createdAt).toLocaleString()}
@@ -421,31 +556,83 @@ export default function Orders() {
                   </div>
 
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">Edit items</p>
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-gray-900">Edit items</p>
+                      <span className="text-xs text-gray-500">
+                        {filteredEditMenu.length}/{Array.isArray(menu) ? menu.length : 0}
+                      </span>
+                    </div>
+
+                    <div className="mt-2 relative">
+                      <svg
+                        aria-hidden
+                        viewBox="0 0 24 24"
+                        className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+                        fill="none"
+                      >
+                        <path
+                          d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        />
+                        <path
+                          d="M16.25 16.25 21 21"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      <input
+                        value={editMenuQuery}
+                        onChange={(e) => setEditMenuQuery(e.target.value)}
+                        placeholder="Search items to add/remove…"
+                        className="w-full rounded-xl border border-gray-300 bg-white pl-9 pr-10 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      {editMenuQuery.trim() ? (
+                        <button
+                          type="button"
+                          onClick={() => setEditMenuQuery('')}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-lg p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                          aria-label="Clear items search"
+                        >
+                          <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4" fill="none">
+                            <path d="M6 6 18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                            <path d="M18 6 6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                          </svg>
+                        </button>
+                      ) : null}
+                    </div>
+
                     <div className="max-h-[260px] overflow-auto pr-1 space-y-2 mt-2">
-                      {menu.map((dish) => (
-                        <div key={dish._id} className="border border-gray-200 rounded-xl p-3 flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="font-semibold text-gray-900 truncate">{dish.name}</p>
-                            <p className="text-xs text-gray-500 mt-0.5">₹{dish.price}</p>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <button
-                              onClick={() => setEditQty(dish._id, (editCart[dish._id] || 0) - 1)}
-                              className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200"
-                            >
-                              −
-                            </button>
-                            <span className="w-7 text-center text-sm font-semibold">{editCart[dish._id] || 0}</span>
-                            <button
-                              onClick={() => setEditQty(dish._id, (editCart[dish._id] || 0) + 1)}
-                              className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200"
-                            >
-                              +
-                            </button>
-                          </div>
+                      {filteredEditMenu.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-gray-200 p-4 text-center">
+                          <p className="text-sm text-gray-500">No items match your search.</p>
                         </div>
-                      ))}
+                      ) : (
+                        filteredEditMenu.map((dish) => (
+                          <div key={dish._id} className="border border-gray-200 rounded-xl p-3 flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="font-semibold text-gray-900 truncate">{dish.name}</p>
+                              <p className="text-xs text-gray-500 mt-0.5">₹{dish.price}</p>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                onClick={() => setEditQty(dish._id, (editCart[dish._id] || 0) - 1)}
+                                className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200"
+                              >
+                                −
+                              </button>
+                              <span className="w-7 text-center text-sm font-semibold">{editCart[dish._id] || 0}</span>
+                              <button
+                                onClick={() => setEditQty(dish._id, (editCart[dish._id] || 0) + 1)}
+                                className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
 

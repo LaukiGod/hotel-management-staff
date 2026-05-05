@@ -13,9 +13,6 @@ export function getKioskResumePath(s) {
 
   function valid(path) {
     if (path === '/tables') return true
-    if (path === '/register') return tableNo != null
-    if (path === '/menu') return tableNo != null && user != null
-    if (path === '/payment') return tableNo != null && user != null && orderId != null
     if (path === '/order-tracking') return tableNo != null && user != null && orderId != null
     if (path === '/order-success') return tableNo != null && user != null
     return false
@@ -27,9 +24,9 @@ export function getKioskResumePath(s) {
     if (kioskPath === '/tables') return '/tables'
     return null
   }
-  if (!user) return '/register'
+  if (!user) return '/tables'
   if (kioskPath === '/order-success') return '/order-success'
   if (kioskPath === '/order-tracking') return '/order-tracking'
   if (orderId) return '/order-tracking'
-  return '/menu'
+  return '/tables'
 }

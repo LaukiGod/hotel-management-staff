@@ -53,6 +53,11 @@ export default function CustomerMenu() {
   const [search, setSearch] = useState('')
 
   useEffect(() => {
+    if (session?.name) setDetailName(session.name)
+    if (session?.phoneNo) setDetailPhone(session.phoneNo)
+  }, [session])
+
+  useEffect(() => {
     const tid = searchParams.get('tableId')
     const flow = searchParams.get('flow')
     if (flow === 'quick' && tid) {

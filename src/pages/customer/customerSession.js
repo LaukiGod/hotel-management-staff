@@ -5,14 +5,32 @@ const RESUMABLE_PATHS = new Set(['/customer/menu', '/customer/track'])
 export function getCustomerSession() {
   try {
     const raw = localStorage.getItem(CUSTOMER_SESSION_KEY)
-    return raw ? JSON.parse(raw) : null
+    if (!raw) return null
+    const session = JSON.parse(raw)
+    if (session.updatedAt) {
+      const updatedTime = new Date(session.updatedAt).getTime()
+      const now = Date.now()
+      const fourHours = 4 * 60 * 60 * 1000
+      if (now - updatedTime > fourHours) {
+        // Keep only name and phoneNo
+        const cleaned = {
+          name: session.name,
+          phoneNo: session.phoneNo,
+          updatedAt: new Date().toISOString()
+        }
+        localStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(cleaned))
+        return cleaned
+      }
+    }
+    return session
   } catch {
     return null
   }
 }
 
 export function setCustomerSession(session) {
-  localStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(session))
+  const withTimestamp = { ...session, updatedAt: new Date().toISOString() }
+  localStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(withTimestamp))
 }
 
 export function patchCustomerSession(partial) {

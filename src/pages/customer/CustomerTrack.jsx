@@ -4,7 +4,7 @@ import { api } from '../../api/client'
 import { useCustomerVerifySession } from '../../hooks/useCustomerVerifySession'
 import CustomerLayout from './CustomerLayout'
 import { normalizedLines } from './customerOrderUtils'
-import { clearCustomerSession, getCustomerSession, patchCustomerSession } from './customerSession'
+import { clearCustomerSession, getCustomerSession, patchCustomerSession, setCustomerSession } from './customerSession'
 
 const LINE_LABELS = {
   queued: { label: 'Received', className: 'bg-gray-100 text-gray-800' },
@@ -57,8 +57,12 @@ export default function CustomerTrack() {
   async function markMealComplete() {
     try {
       await api.post('/user/meal-complete', { tableNo: session.tableNo })
-      patchCustomerSession({ resumePath: '/customer/menu' })
-      await loadOrders()
+      // Reset session to only name and phoneNo after completing meal
+      setCustomerSession({
+        name: session.name,
+        phoneNo: session.phoneNo,
+        tableNo: session.tableNo,
+      })
       alert('Meal marked complete.')
     } catch (e) {
       alert(e.message)

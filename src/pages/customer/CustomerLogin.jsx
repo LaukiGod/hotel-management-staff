@@ -57,6 +57,14 @@ export default function CustomerLogin() {
     }
   }, [navigate])
 
+  useEffect(() => {
+    const session = getCustomerSession()
+    if (session && !session.tableNo && session.name) {
+      setName(session.name)
+      setPhoneNo(session.phoneNo)
+    }
+  }, [])
+
   async function handleStart(e) {
     e.preventDefault()
     setLoading(true)

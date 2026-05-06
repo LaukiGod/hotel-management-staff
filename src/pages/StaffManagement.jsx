@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { api } from '../api/client'
 import { useAuth } from '../context/AuthContext'
+import { useToast, useConfirm } from '../context/ToastContext'
 import AdminPanelHeader from '../components/AdminPanelHeader'
 
 const EMPTY_FORM = { name: '', email: '', role: 'STAFF' }
@@ -19,6 +20,8 @@ function timeSince(d) {
 
 export default function StaffManagement() {
   const { user: me } = useAuth()
+  const toast = useToast()
+  const confirm = useConfirm()
   const [staff, setStaff] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -41,7 +44,10 @@ export default function StaffManagement() {
   useEffect(() => { load() }, [load])
 
   async function handleAdd() {
-    if (!form.name.trim() || !form.email.trim()) return alert('Name and email are required')
+    if (!form.name.trim() || !form.email.trim()) {
+      toast.warning('Name and email are required')
+      return
+    }
     setSaving(true)
     try {
       await api.post('/auth/staff', form)
@@ -49,34 +55,47 @@ export default function StaffManagement() {
       setForm(EMPTY_FORM)
       await load()
     } catch (e) {
-      alert(e.message)
+      toast.error(e.message)
     } finally {
       setSaving(false)
     }
   }
 
   async function handleToggle(member) {
-    if (member._id === me?.id) return alert("You can't deactivate your own account.")
+    if (member._id === me?.id) {
+      toast.warning("You can't deactivate your own account.")
+      return
+    }
     setTogglingId(member._id)
     try {
       const action = member.isActive ? 'deactivate' : 'activate'
       await api.patch(`/auth/staff/${member._id}/${action}`)
       setStaff(prev => prev.map(s => s._id === member._id ? { ...s, isActive: !s.isActive } : s))
     } catch (e) {
-      alert(e.message)
+      toast.error(e.message)
     } finally {
       setTogglingId(null)
     }
   }
 
   async function handleDelete(id, name) {
-    if (id === me?.id) return alert("You can't delete your own account.")
-    if (!confirm(`Permanently delete ${name}?`)) return
+    if (id === me?.id) {
+      toast.warning("You can't delete your own account.")
+      return
+    }
+    const ok = await confirm({
+      title: `Permanently delete ${name}?`,
+      message: 'They will lose access immediately. This action cannot be undone.',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    })
+    if (!ok) return
     try {
       await api.delete(`/auth/staff/${id}`)
       setStaff(prev => prev.filter(s => s._id !== id))
+      toast.success(`${name} removed.`)
     } catch (e) {
-      alert(e.message)
+      toast.error(e.message)
     }
   }
 

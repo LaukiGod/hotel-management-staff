@@ -2,11 +2,13 @@ import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../../api/client'
 import { onCustomerFlowEnter } from '../../utils/sessionCoordination'
+import { useToast } from '../../context/ToastContext'
 import { clearCustomerSession, getCustomerSession } from './customerSession'
 
 export default function CustomerLayout({ title, children }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const toast = useToast()
   const session = getCustomerSession()
   const onTrack = location.pathname === '/customer/track'
 
@@ -18,9 +20,9 @@ export default function CustomerLayout({ title, children }) {
     if (!session?.tableNo) return
     try {
       await api.post('/user/call-waiter', { tableNo: session.tableNo })
-      alert('Waiter has been notified.')
+      toast.success('Waiter has been notified.')
     } catch (e) {
-      alert(e.message)
+      toast.error(e.message)
     }
   }
 

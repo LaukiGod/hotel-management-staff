@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import AdminPanelHeader from '../components/AdminPanelHeader'
+import { useToast, useConfirm } from '../context/ToastContext'
 
 const EMPTY_FORM = { name: '', price: '', ingredients: '', recipe: '', imageUrl: '', category: '' }
 const FILTERS_KEY = 'adminMenuFilters:v1'
@@ -25,6 +26,8 @@ function loadInitialFilters() {
 }
 
 export default function Menu() {
+  const toast = useToast()
+  const confirm = useConfirm()
   const [dishes, setDishes] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -93,19 +96,27 @@ export default function Menu() {
       setShowForm(false)
       await load()
     } catch (e) {
-      alert(e.message)
+      toast.error(e.message)
     } finally {
       setSaving(false)
     }
   }
 
   async function handleDelete(id) {
-    if (!confirm('Delete this dish?')) return
+    const dish = dishes.find((d) => d._id === id)
+    const ok = await confirm({
+      title: dish?.name ? `Delete "${dish.name}"?` : 'Delete this dish?',
+      message: 'Customers will no longer see it on the menu.',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    })
+    if (!ok) return
     try {
       await api.delete(`/restaurant/dish/${id}`)
       setDishes(prev => prev.filter(d => d._id !== id))
+      toast.success('Dish deleted.')
     } catch (e) {
-      alert(e.message)
+      toast.error(e.message)
     }
   }
 

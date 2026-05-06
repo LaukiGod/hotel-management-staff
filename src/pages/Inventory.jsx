@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { useAuth } from '../context/AuthContext'
+import { useToast, useConfirm } from '../context/ToastContext'
 import AdminPanelHeader from '../components/AdminPanelHeader'
 
 function getRowClass(item) {
@@ -21,6 +22,8 @@ const CATEGORIES = ['vegetable', 'fruit', 'dairy', 'meat', 'spice', 'beverage', 
 
 export default function Inventory() {
   const { user } = useAuth()
+  const toast = useToast()
+  const confirm = useConfirm()
   const isAdmin = user?.role === 'ADMIN'
 
   const [items, setItems] = useState([])
@@ -97,19 +100,26 @@ export default function Inventory() {
       }
       setShowForm(false)
     } catch (e) {
-      alert(e.message)
+      toast.error(e.message)
     } finally {
       setSaving(false)
     }
   }
 
   async function handleDelete(id) {
-    if (!confirm('Delete this item?')) return
+    const ok = await confirm({
+      title: 'Delete this item?',
+      message: 'This will remove it from your inventory. You can add it back later.',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    })
+    if (!ok) return
     try {
       await api.delete(`/restaurant/inventory/${id}`)
       setItems(prev => prev.filter(i => i._id !== id))
+      toast.success('Item deleted.')
     } catch (e) {
-      alert(e.message)
+      toast.error(e.message)
     }
   }
 

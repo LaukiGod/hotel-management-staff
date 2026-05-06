@@ -4,9 +4,11 @@ import { motion } from 'framer-motion'
 import { kioskAxios } from '../../api/kioskAxios'
 import KioskShell from '../../components/KioskShell'
 import { useKioskSession } from '../../context/KioskSessionContext'
+import { useToast } from '../../context/ToastContext'
 
 export default function KioskOrderSuccess() {
   const navigate = useNavigate()
+  const toast = useToast()
   const { tableNo, cart, orderId, resetSession } = useKioskSession()
   const [rating, setRating] = useState(0)
   const [comment, setComment] = useState('')
@@ -35,8 +37,9 @@ export default function KioskOrderSuccess() {
     setReviewSaving(true)
     try {
       await kioskAxios.post('/user/review', { orderId, rating, comment: comment.trim() })
+      toast.success('Thanks for your review!')
     } catch (e) {
-      alert(e?.response?.data?.message || e.message || 'Failed to submit review')
+      toast.error(e?.response?.data?.message || e.message || 'Failed to submit review')
     } finally {
       setReviewSaving(false)
     }
@@ -47,8 +50,9 @@ export default function KioskOrderSuccess() {
     setWaiterCalling(true)
     try {
       await kioskAxios.post('/user/call-waiter', { tableNo: Number(tableNo) })
+      toast.success('Waiter has been notified.')
     } catch (e) {
-      alert(e?.response?.data?.message || e.message || 'Failed to call waiter')
+      toast.error(e?.response?.data?.message || e.message || 'Failed to call waiter')
     } finally {
       setWaiterCalling(false)
     }

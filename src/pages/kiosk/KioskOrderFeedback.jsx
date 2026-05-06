@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { kioskAxios } from '../../api/kioskAxios'
 import KioskShell from '../../components/KioskShell'
+import { useToast } from '../../context/ToastContext'
 
 export default function KioskOrderFeedback() {
   const navigate = useNavigate()
   const location = useLocation()
+  const toast = useToast()
   const orderId = location.state?.orderId
   const tableNo = location.state?.tableNo
 
@@ -26,7 +28,7 @@ export default function KioskOrderFeedback() {
       await kioskAxios.post('/user/review', { orderId, rating, comment: comment.trim() })
       navigate('/', { replace: true })
     } catch (e) {
-      alert(e?.response?.data?.message || e.message || 'Failed to submit feedback')
+      toast.error(e?.response?.data?.message || e.message || 'Failed to submit feedback')
     } finally {
       setSaving(false)
     }

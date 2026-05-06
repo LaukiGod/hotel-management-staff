@@ -4,6 +4,7 @@ import StatusBadge from '../components/StatusBadge'
 import AllergyBadge from '../components/AllergyBadge'
 import AdminPanelHeader from '../components/AdminPanelHeader'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import { API_BASE_URL } from '../config/api'
 
 // QR icon inline — no extra dep
@@ -23,6 +24,7 @@ const STATUS_CONFIG = {
 
 export default function Tables() {
   const { user } = useAuth()
+  const toast = useToast()
   const isAdmin = user?.role === 'ADMIN'
   const [tables, setTables] = useState([])
   const [orders, setOrders] = useState([])
@@ -70,7 +72,7 @@ export default function Tables() {
       setTables((prev) => prev.map((t) => (t.tableNo === tableNo ? { ...t, status: 'available', waiterRequested: false } : t)))
       setSelectedTable((prev) => (prev?.tableNo === tableNo ? null : prev))
     } catch (e) {
-      alert(e.message)
+      toast.error(e.message)
     }
   }
 
@@ -81,7 +83,7 @@ export default function Tables() {
       await api.post('/restaurant/tables/increase')
       await apiFetchTables()
     } catch (e) {
-      alert(e.message || 'Failed to add table')
+      toast.error(e.message || 'Failed to add table')
     } finally {
       setAddLoading(false)
     }
@@ -180,7 +182,7 @@ export default function Tables() {
   if (error) {
     return (
       <div className="flex min-h-full min-w-0 flex-1 flex-col">
-        <AdminPanelHeader title="Tables" actionLabel="Add table" onAction={() => alert('Adding tables is not available in this build.')} />
+        <AdminPanelHeader title="Tables" actionLabel="Add table" onAction={() => toast.info('Adding tables is not available in this build.')} />
         <p className="p-4 text-red-500 sm:p-6">{error}</p>
       </div>
     )

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../../api/client'
 import { useCustomerVerifySession } from '../../hooks/useCustomerVerifySession'
+import { useToast } from '../../context/ToastContext'
 import CustomerLayout from './CustomerLayout'
 import { getCustomerSession, isQuickBrowseSession, setCustomerSession, setQuickBrowseSession } from './customerSession'
 
@@ -29,6 +30,7 @@ function groupByCategory(dishes) {
 
 export default function CustomerMenu() {
   const navigate = useNavigate()
+  const toast = useToast()
   const [searchParams] = useSearchParams()
   const [sessionRev, setSessionRev] = useState(0)
   const [sessionReady, setSessionReady] = useState(() => {
@@ -78,7 +80,7 @@ export default function CustomerMenu() {
       .get('/user/menu')
       .then((data) => setMenu(Array.isArray(data) ? data : data?.dishes || []))
       .catch((e) => {
-        alert(e.message)
+        toast.error(e.message)
         setMenu([])
       })
       .finally(() => setLoading(false))
@@ -145,7 +147,7 @@ export default function CustomerMenu() {
     try {
       await submitOrderOnly()
     } catch (e) {
-      alert(e.message)
+      toast.error(e.message)
     } finally {
       setOrdering(false)
     }
@@ -171,11 +173,11 @@ export default function CustomerMenu() {
     const s = getCustomerSession()
     const digits = String(detailPhone || '').replace(/\D/g, '').slice(0, 10)
     if (!detailName.trim()) {
-      alert('Please enter your name.')
+      toast.warning('Please enter your name.')
       return
     }
     if (digits && !/^\d{10}$/.test(digits)) {
-      alert('Phone number must be exactly 10 digits (or leave it blank).')
+      toast.warning('Phone number must be exactly 10 digits (or leave it blank).')
       return
     }
     if (!s?.tableNo) return
@@ -204,7 +206,7 @@ export default function CustomerMenu() {
       setDetailAllergiesText('')
       await submitOrderOnly()
     } catch (e) {
-      alert(e.message)
+      toast.error(e.message)
     } finally {
       setOrdering(false)
     }

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { AdminLayoutProvider } from './context/AdminLayoutContext'
+import { ToastProvider } from './context/ToastContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import RoleRoute from './components/RoleRoute'
 import Navbar from './components/Navbar'
@@ -122,13 +123,15 @@ function AnimatedRoutes() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <KioskSessionProvider>
-        <BrowserRouter>
-          <KioskPathSync />
-          <AnimatedRoutes />
-        </BrowserRouter>
-      </KioskSessionProvider>
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <KioskSessionProvider>
+          <BrowserRouter>
+            <KioskPathSync />
+            <AnimatedRoutes />
+          </BrowserRouter>
+        </KioskSessionProvider>
+      </AuthProvider>
+    </ToastProvider>
   )
 }

@@ -5,6 +5,7 @@ import { kioskAxios } from '../../api/kioskAxios'
 import KioskShell from '../../components/KioskShell'
 import KioskBackButton from '../../components/KioskBackButton'
 import { useKioskSession } from '../../context/KioskSessionContext'
+import { useToast } from '../../context/ToastContext'
 
 const UNCATEGORIZED = 'Other'
 
@@ -30,6 +31,7 @@ function groupByCategory(dishes) {
 
 export default function KioskMenu() {
   const navigate = useNavigate()
+  const toast = useToast()
   const { tableNo, user, cart, setQty, allergies, setAllergies, setOrderId } = useKioskSession()
   const [dishes, setDishes] = useState([])
   const [loading, setLoading] = useState(true)
@@ -123,7 +125,7 @@ export default function KioskMenu() {
       setConfirmOpen(false)
       navigate('/order-tracking')
     } catch (e) {
-      alert(e?.response?.data?.message || e.message || 'Failed to confirm order')
+      toast.error(e?.response?.data?.message || e.message || 'Failed to confirm order')
     } finally {
       setPlacing(false)
     }

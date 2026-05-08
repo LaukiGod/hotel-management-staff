@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import AdminPanelHeader from '../components/AdminPanelHeader'
+import { usePopup } from '../context/PopupContext'
 
-const EMPTY_FORM = { name: '', price: '', ingredients: '', recipe: '', imageUrl: '', category: '' }
+const EMPTY_FORM = { name: '', price: '', ingredients: '', recipe: '', imageUrl: '', category: '', isAvailable: true }
 const FILTERS_KEY = 'adminMenuFilters:v1'
 
 function safeParse(json) {
@@ -25,6 +26,7 @@ function loadInitialFilters() {
 }
 
 export default function Menu() {
+  const notify = usePopup()
   const [dishes, setDishes] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -42,7 +44,7 @@ export default function Menu() {
 
   async function load() {
     try {
-      const data = await api.get('/user/menu')
+      const data = await api.get('/restaurant/menu')
       setDishes(data)
     } catch (e) {
       setError(e.message)
@@ -66,6 +68,7 @@ export default function Menu() {
       ingredients: dish.ingredients?.join(', ') || '',
       recipe: dish.recipe || '',
       imageUrl: dish.imageUrl || '',
+      isAvailable: dish.isAvailable !== false,
     })
     setShowForm(true)
   }
@@ -84,6 +87,7 @@ export default function Menu() {
         ingredients: form.ingredients.split(',').map(s => s.trim()).filter(Boolean),
         recipe: form.recipe,
         imageUrl: image,
+        isAvailable: form.isAvailable !== false,
       }
       if (editDishId !== null) {
         await api.put('/restaurant/update-dish', { dishId: editDishId, ...payload })
@@ -93,7 +97,7 @@ export default function Menu() {
       setShowForm(false)
       await load()
     } catch (e) {
-      alert(e.message)
+      notify.error(e.message)
     } finally {
       setSaving(false)
     }
@@ -105,7 +109,7 @@ export default function Menu() {
       await api.delete(`/restaurant/dish/${id}`)
       setDishes(prev => prev.filter(d => d._id !== id))
     } catch (e) {
-      alert(e.message)
+      notify.error(e.message)
     }
   }
 
@@ -165,7 +169,7 @@ export default function Menu() {
         <p className="p-4 text-gray-500 sm:p-6">Loading…</p>
       ) : (
     <div className="p-4 sm:p-6">
-      <div className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="mb-5 grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="md:col-span-2">
           <label className="block text-xs text-gray-500 mb-1">Search</label>
           <input
@@ -207,71 +211,204 @@ export default function Menu() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
         {dishes.length === 0 && <p className="text-gray-400 col-span-full">No dishes yet.</p>}
         {dishes.length > 0 && filteredDishes.length === 0 && (
           <p className="text-gray-400 col-span-full">No dishes match your search / filters.</p>
         )}
         {filteredDishes.map(dish => (
-          <div key={dish._id} className="bg-white rounded-xl border border-gray-200 p-4">
+          <article
+            key={dish._id}
+            className={`overflow-hidden rounded-2xl border shadow-sm transition hover:shadow-md ${
+              dish.isAvailable === false ? 'border-amber-200 bg-amber-50/40' : 'border-gray-200 bg-white'
+            }`}
+          >
             {dish.imageUrl ? (
-              <img src={dish.imageUrl} alt={dish.name} className="w-full h-36 object-cover rounded-lg mb-3" />
+              <img src={dish.imageUrl} alt={dish.name} className="w-full h-40 object-cover" />
             ) : (
-              <div className="w-full h-36 rounded-lg mb-3 border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center">
+              <div className="w-full h-40 border-b border-dashed border-gray-200 bg-gray-50 flex items-center justify-center">
                 <div className="text-center">
-                  <div className="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center mx-auto text-lg">
+                  <div className="w-11 h-11 rounded-xl bg-white border border-gray-200 flex items-center justify-center mx-auto text-lg">
                     🍽️
                   </div>
                   <p className="mt-2 text-xs font-medium text-gray-500">No image</p>
                 </div>
               </div>
             )}
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="font-semibold text-gray-900">{dish.name}</p>
-                <p className="text-sm text-gray-500 mt-0.5">₹{dish.price}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{dish.category || 'General'}</p>
+
+            <div className="p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-base font-semibold text-gray-900 truncate">{dish.name}</p>
+                  <p className="text-sm text-gray-500 mt-0.5">{dish.category || 'General'}</p>
+                </div>
+                <p className="shrink-0 text-lg font-bold text-gray-900">₹{dish.price}</p>
               </div>
-              <div className="flex gap-2 shrink-0">
+
+              <div className="mt-3 flex items-center gap-2 flex-wrap">
+                <span
+                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                    dish.isAvailable === false ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                  }`}
+                >
+                  {dish.isAvailable === false ? 'Unavailable' : 'Available'}
+                </span>
+                {dish.dishId != null ? (
+                  <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
+                    ID #{dish.dishId}
+                  </span>
+                ) : null}
+              </div>
+
+              <p className="mt-3 text-xs text-gray-500 min-h-8 line-clamp-2">
+                {dish.recipe?.trim() || 'No recipe note added yet.'}
+              </p>
+
+              {dish.ingredients?.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {dish.ingredients.slice(0, 4).map((ing) => (
+                    <span key={`${dish._id}-${ing}`} className="rounded-md bg-gray-100 px-2 py-1 text-[11px] text-gray-600">
+                      {ing}
+                    </span>
+                  ))}
+                  {dish.ingredients.length > 4 ? (
+                    <span className="rounded-md bg-gray-100 px-2 py-1 text-[11px] text-gray-600">
+                      +{dish.ingredients.length - 4} more
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <div className="mt-4 grid grid-cols-1 gap-2">
                 <button
                   type="button"
-                  onClick={() => openEdit(dish)}
-                  className="inline-flex items-center justify-center h-8 px-3 rounded-lg text-xs font-semibold border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition"
+                  onClick={async () => {
+                    try {
+                      await api.put('/restaurant/update-dish', {
+                        dishId: dish.dishId ?? dish._id,
+                        isAvailable: dish.isAvailable === false,
+                      })
+                      setDishes(prev => prev.map(d =>
+                        d._id === dish._id ? { ...d, isAvailable: d.isAvailable === false } : d
+                      ))
+                      notify.success(`Dish marked ${dish.isAvailable === false ? 'available' : 'unavailable'}.`)
+                    } catch (e) {
+                      notify.error(e.message)
+                    }
+                  }}
+                  className={`inline-flex items-center justify-center h-9 rounded-lg text-xs font-semibold border transition ${
+                    dish.isAvailable === false
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                      : 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100'
+                  }`}
                 >
-                  Edit
+                  {dish.isAvailable === false ? 'Mark Available' : 'Mark Unavailable'}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(dish._id)}
-                  className="inline-flex items-center justify-center h-8 px-3 rounded-lg text-xs font-semibold border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-300 transition"
-                >
-                  Delete
-                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openEdit(dish)}
+                    className="inline-flex items-center justify-center h-9 rounded-lg text-xs font-semibold border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(dish._id)}
+                    className="inline-flex items-center justify-center h-9 rounded-lg text-xs font-semibold border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-300 transition"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             </div>
-            {dish.ingredients?.length > 0 && (
-              <p className="text-xs text-gray-400 mt-2">{dish.ingredients.join(', ')}</p>
-            )}
-          </div>
+          </article>
         ))}
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-bold mb-4">{editDishId !== null ? 'Edit Dish' : 'Add Dish'}</h2>
-            <div className="space-y-3">
-              <Field label="Name *" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} />
-              <Field label="Price *" type="number" value={form.price} onChange={v => setForm(f => ({ ...f, price: v }))} />
-              <Field label="Category / Type" value={form.category} onChange={v => setForm(f => ({ ...f, category: v }))} />
-              <Field label="Ingredients (comma separated)" value={form.ingredients} onChange={v => setForm(f => ({ ...f, ingredients: v }))} />
-              <Field label="Recipe" textarea value={form.recipe} onChange={v => setForm(f => ({ ...f, recipe: v }))} />
-              <Field label="Image URL" value={form.imageUrl} onChange={v => setForm(f => ({ ...f, imageUrl: v }))} />
+        <div className="fixed inset-0 z-50 bg-black/40 p-4 sm:p-6 flex items-center justify-center">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">{editDishId !== null ? 'Edit Dish' : 'Add Dish'}</h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {editDishId !== null ? 'Update dish details and availability.' : 'Create a new menu item for customers.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="text-sm text-gray-500 hover:text-gray-800 px-2 py-1 rounded-lg hover:bg-gray-100"
+              >
+                Close
+              </button>
             </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={() => setShowForm(false)} className="flex-1 border border-gray-300 rounded-lg py-2 text-sm">Cancel</button>
-              <button onClick={handleSave} disabled={saving} className="flex-1 bg-gray-900 text-white rounded-lg py-2 text-sm disabled:opacity-50">
-                {saving ? 'Saving...' : 'Save'}
+
+            <div className="p-6 overflow-y-auto space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Field label="Dish Name *" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} />
+                <Field label="Category" value={form.category} onChange={v => setForm(f => ({ ...f, category: v }))} placeholder="General" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Field label="Price (INR) *" type="number" value={form.price} onChange={v => setForm(f => ({ ...f, price: v }))} />
+                <Field
+                  label="Image URL"
+                  value={form.imageUrl}
+                  onChange={v => setForm(f => ({ ...f, imageUrl: v }))}
+                  placeholder="https://example.com/image.jpg"
+                />
+              </div>
+              {form.imageUrl?.trim() ? (
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+                  <p className="text-xs text-gray-500 mb-2">Image preview</p>
+                  <img src={form.imageUrl} alt="Preview" className="h-32 w-full rounded-lg object-cover" />
+                </div>
+              ) : null}
+
+              <Field
+                label="Ingredients (comma separated)"
+                value={form.ingredients}
+                onChange={v => setForm(f => ({ ...f, ingredients: v }))}
+                placeholder="e.g. mozzarella, basil, tomato"
+              />
+              <Field
+                label="Recipe / Notes"
+                textarea
+                value={form.recipe}
+                onChange={v => setForm(f => ({ ...f, recipe: v }))}
+                placeholder="Short preparation notes for staff..."
+              />
+
+              <label className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={form.isAvailable !== false}
+                  onChange={(e) => setForm(f => ({ ...f, isAvailable: e.target.checked }))}
+                  className="h-4 w-4"
+                />
+                <span>
+                  <span className="font-medium text-gray-900">Available for customer ordering</span>
+                  <span className="block text-xs text-gray-500 mt-0.5">Turn this off to temporarily hide the dish from customers.</span>
+                </span>
+              </label>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-200 bg-white flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="flex-1 border border-gray-300 rounded-lg py-2.5 text-sm font-medium hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="flex-1 bg-gray-900 text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-gray-800 disabled:opacity-50"
+              >
+                {saving ? 'Saving...' : editDishId !== null ? 'Save Changes' : 'Add Dish'}
               </button>
             </div>
           </div>
@@ -283,14 +420,14 @@ export default function Menu() {
   )
 }
 
-function Field({ label, value, onChange, type = 'text', textarea }) {
-  const cls = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+function Field({ label, value, onChange, type = 'text', textarea, placeholder = '' }) {
+  const cls = 'w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500'
   return (
     <div>
-      <label className="block text-xs text-gray-500 mb-1">{label}</label>
+      <label className="block text-xs font-medium text-gray-600 mb-1.5">{label}</label>
       {textarea
-        ? <textarea rows={3} value={value} onChange={e => onChange(e.target.value)} className={cls} />
-        : <input type={type} value={value} onChange={e => onChange(e.target.value)} className={cls} />
+        ? <textarea rows={4} value={value} onChange={e => onChange(e.target.value)} className={cls} placeholder={placeholder} />
+        : <input type={type} value={value} onChange={e => onChange(e.target.value)} className={cls} placeholder={placeholder} />
       }
     </div>
   )

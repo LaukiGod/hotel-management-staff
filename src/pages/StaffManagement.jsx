@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { api } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import AdminPanelHeader from '../components/AdminPanelHeader'
+import { usePopup } from '../context/PopupContext'
 
 const EMPTY_FORM = { name: '', email: '', role: 'STAFF' }
 
@@ -19,6 +20,7 @@ function timeSince(d) {
 
 export default function StaffManagement() {
   const { user: me } = useAuth()
+  const notify = usePopup()
   const [staff, setStaff] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -41,7 +43,10 @@ export default function StaffManagement() {
   useEffect(() => { load() }, [load])
 
   async function handleAdd() {
-    if (!form.name.trim() || !form.email.trim()) return alert('Name and email are required')
+    if (!form.name.trim() || !form.email.trim()) {
+      notify.info('Name and email are required')
+      return
+    }
     setSaving(true)
     try {
       await api.post('/auth/staff', form)
@@ -49,34 +54,40 @@ export default function StaffManagement() {
       setForm(EMPTY_FORM)
       await load()
     } catch (e) {
-      alert(e.message)
+      notify.error(e.message)
     } finally {
       setSaving(false)
     }
   }
 
   async function handleToggle(member) {
-    if (member._id === me?.id) return alert("You can't deactivate your own account.")
+    if (member._id === me?.id) {
+      notify.info("You can't deactivate your own account.")
+      return
+    }
     setTogglingId(member._id)
     try {
       const action = member.isActive ? 'deactivate' : 'activate'
       await api.patch(`/auth/staff/${member._id}/${action}`)
       setStaff(prev => prev.map(s => s._id === member._id ? { ...s, isActive: !s.isActive } : s))
     } catch (e) {
-      alert(e.message)
+      notify.error(e.message)
     } finally {
       setTogglingId(null)
     }
   }
 
   async function handleDelete(id, name) {
-    if (id === me?.id) return alert("You can't delete your own account.")
+    if (id === me?.id) {
+      notify.info("You can't delete your own account.")
+      return
+    }
     if (!confirm(`Permanently delete ${name}?`)) return
     try {
       await api.delete(`/auth/staff/${id}`)
       setStaff(prev => prev.filter(s => s._id !== id))
     } catch (e) {
-      alert(e.message)
+      notify.error(e.message)
     }
   }
 

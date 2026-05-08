@@ -8,6 +8,7 @@ import Navbar from './components/Navbar'
 import { KioskSessionProvider, useKioskSession } from './context/KioskSessionContext'
 import { useAdminLayout } from './context/AdminLayoutContext'
 import { useMediaQuery } from './hooks/useMediaQuery'
+import { PopupProvider } from './context/PopupContext'
 import { AnimatePresence } from 'framer-motion'
 
 import Login from './pages/Login'
@@ -123,12 +124,14 @@ function AnimatedRoutes() {
 export default function App() {
   return (
     <AuthProvider>
-      <KioskSessionProvider>
-        <BrowserRouter>
-          <KioskPathSync />
-          <AnimatedRoutes />
-        </BrowserRouter>
-      </KioskSessionProvider>
+      <PopupProvider>
+        <KioskSessionProvider>
+          <BrowserRouter>
+            <KioskPathSync />
+            <AnimatedRoutes />
+          </BrowserRouter>
+        </KioskSessionProvider>
+      </PopupProvider>
     </AuthProvider>
   )
 }

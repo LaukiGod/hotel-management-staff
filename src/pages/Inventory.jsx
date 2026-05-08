@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import AdminPanelHeader from '../components/AdminPanelHeader'
+import { usePopup } from '../context/PopupContext'
 
 function getRowClass(item) {
   const now = new Date()
@@ -21,6 +22,7 @@ const CATEGORIES = ['vegetable', 'fruit', 'dairy', 'meat', 'spice', 'beverage', 
 
 export default function Inventory() {
   const { user } = useAuth()
+  const notify = usePopup()
   const isAdmin = user?.role === 'ADMIN'
 
   const [items, setItems] = useState([])
@@ -97,7 +99,7 @@ export default function Inventory() {
       }
       setShowForm(false)
     } catch (e) {
-      alert(e.message)
+      notify.error(e.message)
     } finally {
       setSaving(false)
     }
@@ -109,7 +111,7 @@ export default function Inventory() {
       await api.delete(`/restaurant/inventory/${id}`)
       setItems(prev => prev.filter(i => i._id !== id))
     } catch (e) {
-      alert(e.message)
+      notify.error(e.message)
     }
   }
 

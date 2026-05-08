@@ -4,10 +4,12 @@ import { motion } from 'framer-motion'
 import { kioskAxios } from '../../api/kioskAxios'
 import KioskShell from '../../components/KioskShell'
 import { useKioskSession } from '../../context/KioskSessionContext'
+import { usePopup } from '../../context/PopupContext'
 
 export default function KioskOrderSuccess() {
   const navigate = useNavigate()
   const { tableNo, cart, orderId, resetSession } = useKioskSession()
+  const notify = usePopup()
   const [rating, setRating] = useState(0)
   const [comment, setComment] = useState('')
   const [reviewSaving, setReviewSaving] = useState(false)
@@ -36,7 +38,7 @@ export default function KioskOrderSuccess() {
     try {
       await kioskAxios.post('/user/review', { orderId, rating, comment: comment.trim() })
     } catch (e) {
-      alert(e?.response?.data?.message || e.message || 'Failed to submit review')
+      notify.error(e?.response?.data?.message || e.message || 'Failed to submit review')
     } finally {
       setReviewSaving(false)
     }
@@ -47,8 +49,9 @@ export default function KioskOrderSuccess() {
     setWaiterCalling(true)
     try {
       await kioskAxios.post('/user/call-waiter', { tableNo: Number(tableNo) })
+      notify.success('Waiter has been notified.')
     } catch (e) {
-      alert(e?.response?.data?.message || e.message || 'Failed to call waiter')
+      notify.error(e?.response?.data?.message || e.message || 'Failed to call waiter')
     } finally {
       setWaiterCalling(false)
     }

@@ -177,8 +177,14 @@ export default function Orders() {
     })
   }, [menu, editMenuQuery])
 
+  const availableMenu = useMemo(() => {
+    return Array.isArray(menu)
+      ? menu.filter((d) => d?.isAvailable !== false)
+      : []
+  }, [menu])
+
   const filteredMenu = useMemo(() => {
-    const list = Array.isArray(menu) ? menu : []
+    const list = availableMenu
     const q = String(menuQuery || '').trim().toLowerCase()
     if (!q) return list
     return list.filter((d) => {
@@ -186,7 +192,7 @@ export default function Orders() {
       const price = String(d?.price ?? '').toLowerCase()
       return name.includes(q) || price.includes(q)
     })
-  }, [menu, menuQuery])
+  }, [availableMenu, menuQuery])
 
   function openAdd() {
     setAddOpen(true)
@@ -751,7 +757,7 @@ export default function Orders() {
                     <p className="text-sm font-semibold text-gray-900">Menu</p>
                     <p className="text-xs text-gray-500 mt-0.5">Tap +/− to set quantity</p>
                   </div>
-                  <p className="text-xs text-gray-500">{filteredMenu.length}/{menu.length} items</p>
+                  <p className="text-xs text-gray-500">{filteredMenu.length}/{availableMenu.length} items</p>
                 </div>
                 <div className="relative mb-3">
                   <svg

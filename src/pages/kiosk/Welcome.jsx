@@ -45,6 +45,11 @@ export default function KioskWelcome() {
   const idleTimer = useRef(null)
   /** When true, skip resuming to a deeper step (user explicitly chose to view welcome). */
   const stayOnWelcomeRef = useRef(false)
+  /**
+   * Computed once on mount: the path to resume to (customer session or kiosk session).
+   * Stored in a ref so the idle timer and proceed() can check it without stale closures.
+   */
+  const resumePathRef = useRef(null)
 
   const restaurantName = import.meta.env.VITE_RESTAURANT_NAME || 'Smart Restaurant'
   const restaurantTagline = import.meta.env.VITE_RESTAURANT_TAGLINE || 'AI-powered ordering with real-time allergy detection. Frictionless from your table to the kitchen.'
@@ -61,6 +66,7 @@ export default function KioskWelcome() {
   useEffect(() => {
     if (location.state?.kioskIntent === 'showWelcome') {
       stayOnWelcomeRef.current = true
+      resumePathRef.current = null
       navigate('/', { replace: true, state: null })
       return
     }
@@ -68,6 +74,7 @@ export default function KioskWelcome() {
       return
     }
     const p = getCombinedResumePath({ tableNo, user, orderId, kioskPath })
+    resumePathRef.current = p
     if (p) {
       const t = setTimeout(() => {
         navigate(p, { replace: true })
@@ -78,6 +85,10 @@ export default function KioskWelcome() {
 
   useEffect(() => {
     function goTables() {
+      // Only clear the customer session and start a new kiosk flow if there is
+      // no active session waiting to be resumed. If a resume path exists, the
+      // auto-redirect above will handle navigation — don't interfere.
+      if (resumePathRef.current) return
       onKioskFlowExplicitStart()
       navigate('/tables')
     }
@@ -98,6 +109,9 @@ export default function KioskWelcome() {
   }, [navigate])
 
   function proceed() {
+    // If there is an active session to resume, a tap should not start a brand-new
+    // kiosk flow (which would clear the customer session). Let the auto-redirect fire.
+    if (resumePathRef.current) return
     stayOnWelcomeRef.current = false
     onKioskFlowExplicitStart()
     navigate('/tables')

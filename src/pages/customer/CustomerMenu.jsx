@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../../api/client'
 import { useCustomerVerifySession } from '../../hooks/useCustomerVerifySession'
 import CustomerLayout from './CustomerLayout'
+import { normalizedLines } from './customerOrderUtils'
 import { getCustomerSession, isQuickBrowseSession, setCustomerSession, setQuickBrowseSession } from './customerSession'
 import { usePopup } from '../../context/PopupContext'
 
@@ -57,6 +58,10 @@ export default function CustomerMenu() {
   const [activeCategory, setActiveCategory] = useState('All')
   const [selectedDish, setSelectedDish] = useState(null)
   const [search, setSearch] = useState('')
+  const [orderViewOpen, setOrderViewOpen] = useState(false)
+  const [tableOrders, setTableOrders] = useState([])
+  const [ordersLoading, setOrdersLoading] = useState(false)
+  const [hasActiveOrders, setHasActiveOrders] = useState(false)
 
   useEffect(() => {
     const tid = searchParams.get('tableId')
@@ -90,7 +95,52 @@ export default function CustomerMenu() {
       .finally(() => setLoading(false))
   }, [navigate, sessionReady, sessionRev])
 
+  // Background poll: check if any orders exist for this table so we can show the indicator dot.
+  useEffect(() => {
+    const s = getCustomerSession()
+    if (!s?.tableNo || !sessionReady) return
+    let cancelled = false
+
+    async function checkOrders() {
+      try {
+        const data = await api.get(`/user/orders/${s.tableNo}`)
+        if (!cancelled) {
+          const orders = Array.isArray(data) ? data : []
+          setHasActiveOrders(orders.length > 0)
+        }
+      } catch {
+        // silent — indicator just won't show
+      }
+    }
+
+    checkOrders()
+    const t = setInterval(checkOrders, 8000)
+    return () => {
+      cancelled = true
+      clearInterval(t)
+    }
+  }, [sessionReady])
+
+  async function openOrderView() {
+    const s = getCustomerSession()
+    if (!s?.tableNo) return
+    setOrderViewOpen(true)
+    setOrdersLoading(true)
+    try {
+      const data = await api.get(`/user/orders/${s.tableNo}`)
+      const orders = Array.isArray(data) ? data : []
+      setTableOrders(orders)
+      setHasActiveOrders(orders.length > 0)
+    } catch (e) {
+      notify.error(e.message)
+      setTableOrders([])
+    } finally {
+      setOrdersLoading(false)
+    }
+  }
+
   const searchLower = search.trim().toLowerCase()
+
   const filteredMenu = useMemo(() => {
     if (!searchLower) return menu
     return menu.filter((d) => String(d.name || '').toLowerCase().includes(searchLower))
@@ -267,16 +317,17 @@ export default function CustomerMenu() {
               </p>
             )}
           </div>
-          {!quickBrowse ? (
-            <button
-              type="button"
-              onClick={() => navigate('/customer/track')}
-              className="w-9 h-9 rounded-full border border-gray-300 bg-white text-sm"
-              aria-label="Track orders"
-            >
-              🧾
-            </button>
-          ) : null}
+          <button
+            type="button"
+            onClick={openOrderView}
+            className="relative w-9 h-9 rounded-full border border-gray-300 bg-white text-sm flex items-center justify-center"
+            aria-label="View current orders"
+          >
+            🧾
+            {hasActiveOrders && (
+              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white" />
+            )}
+          </button>
         </div>
 
         <div>
@@ -310,11 +361,10 @@ export default function CustomerMenu() {
                     onClick={() => {
                       setActiveCategory(category)
                     }}
-                    className={`shrink-0 px-3 py-2 rounded-xl text-xs font-medium border transition-colors ${
-                      activeCategory === category
-                        ? 'bg-gray-900 text-white border-gray-900'
-                        : 'bg-white text-gray-700 border-gray-300'
-                    }`}
+                    className={`shrink-0 px-3 py-2 rounded-xl text-xs font-medium border transition-colors ${activeCategory === category
+                      ? 'bg-gray-900 text-white border-gray-900'
+                      : 'bg-white text-gray-700 border-gray-300'
+                      }`}
                   >
                     {category}
                   </button>
@@ -379,55 +429,54 @@ export default function CustomerMenu() {
                   (() => {
                     const unavailable = !isDishAvailable(dish)
                     return (
-                  <div
-                    key={dish._id}
-                    onClick={() => setSelectedDish(dish)}
-                    onKeyDown={(e) => e.key === 'Enter' && setSelectedDish(dish)}
-                    role="button"
-                    tabIndex={0}
-                    className={`border rounded-2xl p-3 focus:outline-none focus:ring-2 focus:ring-gray-400 ${
-                      unavailable ? 'bg-gray-50 border-gray-300 opacity-75' : 'bg-white border-gray-200'
-                    }`}
-                  >
-                    <div className="flex gap-3">
-                      {dish.imageUrl ? (
-                        <img src={dish.imageUrl} alt="" className="w-20 h-20 object-cover rounded-xl shrink-0" />
-                      ) : (
-                        <div className="w-20 h-20 shrink-0 rounded-xl bg-gray-100 flex items-center justify-center text-xs text-gray-500">
-                          No image
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate">{dish.name}</p>
-                        {unavailable ? (
-                          <p className="text-[11px] font-semibold text-amber-700 mt-0.5">Currently unavailable</p>
-                        ) : null}
-                        <p className="text-xs text-gray-500 line-clamp-2 mt-0.5">{dish.recipe || 'Freshly prepared'}</p>
-                        <div className="mt-2 flex items-center justify-between gap-2">
-                          <p className="text-sm font-semibold text-gray-900 shrink-0">Rs {dish.price}</p>
-                          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              type="button"
-                              disabled={unavailable}
-                              className="w-8 h-8 rounded-lg bg-gray-100 text-sm disabled:opacity-40"
-                              onClick={() => changeQty(dish, -1)}
-                            >
-                              -
-                            </button>
-                            <span className="text-sm font-medium w-6 text-center">{cart[dish._id] || 0}</span>
-                            <button
-                              type="button"
-                              disabled={unavailable}
-                              className="w-8 h-8 rounded-lg bg-gray-900 text-white text-sm disabled:opacity-40"
-                              onClick={() => changeQty(dish, 1)}
-                            >
-                              +
-                            </button>
+                      <div
+                        key={dish._id}
+                        onClick={() => setSelectedDish(dish)}
+                        onKeyDown={(e) => e.key === 'Enter' && setSelectedDish(dish)}
+                        role="button"
+                        tabIndex={0}
+                        className={`border rounded-2xl p-3 focus:outline-none focus:ring-2 focus:ring-gray-400 ${unavailable ? 'bg-gray-50 border-gray-300 opacity-75' : 'bg-white border-gray-200'
+                          }`}
+                      >
+                        <div className="flex gap-3">
+                          {dish.imageUrl ? (
+                            <img src={dish.imageUrl} alt="" className="w-20 h-20 object-cover rounded-xl shrink-0" />
+                          ) : (
+                            <div className="w-20 h-20 shrink-0 rounded-xl bg-gray-100 flex items-center justify-center text-xs text-gray-500">
+                              No image
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 truncate">{dish.name}</p>
+                            {unavailable ? (
+                              <p className="text-[11px] font-semibold text-amber-700 mt-0.5">Currently unavailable</p>
+                            ) : null}
+                            <p className="text-xs text-gray-500 line-clamp-2 mt-0.5">{dish.recipe || 'Freshly prepared'}</p>
+                            <div className="mt-2 flex items-center justify-between gap-2">
+                              <p className="text-sm font-semibold text-gray-900 shrink-0">Rs {dish.price}</p>
+                              <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  disabled={unavailable}
+                                  className="w-8 h-8 rounded-lg bg-gray-100 text-sm disabled:opacity-40"
+                                  onClick={() => changeQty(dish, -1)}
+                                >
+                                  -
+                                </button>
+                                <span className="text-sm font-medium w-6 text-center">{cart[dish._id] || 0}</span>
+                                <button
+                                  type="button"
+                                  disabled={unavailable}
+                                  className="w-8 h-8 rounded-lg bg-gray-900 text-white text-sm disabled:opacity-40"
+                                  onClick={() => changeQty(dish, 1)}
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
                     )
                   })()
                 ))}
@@ -436,6 +485,120 @@ export default function CustomerMenu() {
           </>
         )}
       </div>
+
+      {orderViewOpen && (
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setOrderViewOpen(false)}
+            role="presentation"
+          />
+          <div className="relative w-full sm:max-w-md bg-white sm:rounded-2xl rounded-t-2xl border border-gray-200 shadow-xl flex flex-col max-h-[85vh]">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 shrink-0">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Current Orders</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Table #{session?.tableNo}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOrderViewOpen(false)}
+                className="w-8 h-8 rounded-full border border-gray-200 bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-500 text-lg leading-none"
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="overflow-y-auto flex-1 px-5 py-4 space-y-3">
+              {ordersLoading ? (
+                <div className="py-10 flex flex-col items-center gap-2 text-gray-400">
+                  <span className="inline-block w-6 h-6 rounded-full border-2 border-gray-200 border-t-gray-500 animate-spin" />
+                  <p className="text-sm">Loading orders…</p>
+                </div>
+              ) : tableOrders.length === 0 ? (
+                <div className="py-10 flex flex-col items-center gap-2 text-center">
+                  <span className="text-3xl">🍽️</span>
+                  <p className="text-sm font-medium text-gray-700">No items added yet</p>
+                  <p className="text-xs text-gray-500">
+                    Add dishes from the menu below, or wait for the staff to add items to your table.
+                  </p>
+                </div>
+              ) : (
+                tableOrders.map((order) => {
+                  const lines = normalizedLines(order)
+                  const statusColors = {
+                    queued: 'bg-gray-100 text-gray-700',
+                    preparing: 'bg-amber-100 text-amber-900',
+                    ready: 'bg-cyan-100 text-cyan-900',
+                    served: 'bg-emerald-100 text-emerald-900',
+                    completed: 'bg-emerald-100 text-emerald-900',
+                  }
+                  return (
+                    <div key={order._id} className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          Order #{order._id.slice(-6)}
+                        </p>
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${statusColors[order.status] || 'bg-gray-100 text-gray-700'}`}>
+                          {order.status}
+                        </span>
+                      </div>
+                      {lines.length > 0 ? (
+                        <ul className="space-y-2">
+                          {lines.map((li, i) => {
+                            const dish = li.dish || {}
+                            const st = li.status || 'queued'
+                            const meta = statusColors[st] || statusColors.queued
+                            return (
+                              <li
+                                key={li._id || `${dish._id}-${i}`}
+                                className="flex items-center justify-between gap-2 text-sm"
+                              >
+                                <span className="text-gray-900 font-medium truncate">
+                                  {dish.name || 'Item'}
+                                </span>
+                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg shrink-0 ${meta}`}>
+                                  {st}
+                                </span>
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      ) : (
+                        <p className="text-xs text-gray-500">
+                          {order.dishes?.map((d) => d.name).join(', ') || 'No item details'}
+                        </p>
+                      )}
+                    </div>
+                  )
+                })
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-4 border-t border-gray-100 shrink-0 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setOrderViewOpen(false)}
+                className="flex-1 py-2.5 text-sm border border-gray-300 rounded-xl hover:bg-gray-50"
+              >
+                Close
+              </button>
+              {tableOrders.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => { setOrderViewOpen(false); navigate('/customer/track') }}
+                  className="flex-1 py-2.5 text-sm bg-gray-900 text-white rounded-xl hover:bg-gray-800"
+                >
+                  Full tracking →
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {checkoutConfirmOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">

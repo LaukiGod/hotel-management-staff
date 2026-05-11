@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../../api/client'
 import { onCustomerFlowEnter } from '../../utils/sessionCoordination'
-import { clearCustomerSession, getCustomerSession } from './customerSession'
+import { getCustomerSession } from './customerSession'
 import { usePopup } from '../../context/PopupContext'
 
 export default function CustomerLayout({ title, children }) {
@@ -27,8 +27,9 @@ export default function CustomerLayout({ title, children }) {
   }
 
   function exitSession() {
-    clearCustomerSession()
-    navigate('/tables', { replace: true })
+    // Do NOT clear the session — let Welcome check it on return.
+    // If the order is still open, Welcome will resume back to the right page.
+    navigate('/', { replace: true })
   }
 
   return (
@@ -50,7 +51,7 @@ export default function CustomerLayout({ title, children }) {
               </button>
             ) : null}
             <button type="button" onClick={exitSession} className="text-xs text-gray-500 hover:text-gray-800 px-2 py-1.5">
-              Exit
+              Home
             </button>
           </div>
         </div>

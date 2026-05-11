@@ -4,7 +4,7 @@ import { api } from '../../api/client'
 import { useCustomerVerifySession } from '../../hooks/useCustomerVerifySession'
 import CustomerLayout from './CustomerLayout'
 import { normalizedLines } from './customerOrderUtils'
-import { clearCustomerSession, getCustomerSession, patchCustomerSession } from './customerSession'
+import { clearCustomerSession, getCustomerSession } from './customerSession'
 import { usePopup } from '../../context/PopupContext'
 
 const LINE_LABELS = {
@@ -23,10 +23,9 @@ export default function CustomerTrack() {
   const [loading, setLoading] = useState(true)
   const [rating, setRating] = useState(5)
   const [comment, setComment] = useState('')
-  /** 'meal' | 'review' | null — full-page thank-you after successful actions */
-  const [completionKind, setCompletionKind] = useState(null)
-  const [mealSubmitting, setMealSubmitting] = useState(false)
-  const [reviewSubmitting, setReviewSubmitting] = useState(false)
+  const [completeConfirmOpen, setCompleteConfirmOpen] = useState(false)
+  const [completing, setCompleting] = useState(false)
+  const [mealCompleted, setMealCompleted] = useState(false)
 
   async function loadOrders() {
     if (!session?.tableNo) return
@@ -45,11 +44,10 @@ export default function CustomerTrack() {
       navigate('/tables', { replace: true })
       return
     }
-    if (completionKind) return
     loadOrders()
     const t = setInterval(loadOrders, 4000)
     return () => clearInterval(t)
-  }, [navigate, session?.tableNo, completionKind])
+  }, [navigate, session?.tableNo])
 
   const latestOrder = useMemo(() => orders[0], [orders])
   const latestLines = useMemo(() => normalizedLines(latestOrder), [latestOrder])
@@ -61,88 +59,49 @@ export default function CustomerTrack() {
     document.getElementById('customer-review-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [allLatestServed])
 
-  async function markMealComplete() {
-    if (mealSubmitting) return
-    setMealSubmitting(true)
+  async function confirmMealComplete() {
+    setCompleting(true)
     try {
       await api.post('/user/meal-complete', { tableNo: session.tableNo })
-      patchCustomerSession({ resumePath: '/customer/menu' })
-      await loadOrders()
-      setCompletionKind('meal')
+      setMealCompleted(true)
+      setCompleteConfirmOpen(false)
+      setTimeout(() => {
+        document.getElementById('customer-review-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 100)
     } catch (e) {
       notify.error(e.message)
     } finally {
-      setMealSubmitting(false)
+      setCompleting(false)
     }
   }
 
   async function submitReview() {
-    if (!latestOrder?._id || reviewSubmitting) return
-    setReviewSubmitting(true)
+    if (!latestOrder?._id) return
     try {
       await api.post('/user/review', { orderId: latestOrder._id, rating, comment })
-      setCompletionKind('review')
+      notify.success('Review submitted. Thank you!')
+      if (mealCompleted) {
+        clearCustomerSession()
+        navigate('/tables', { replace: true })
+      }
     } catch (e) {
       notify.error(e.message)
-    } finally {
-      setReviewSubmitting(false)
     }
   }
 
-  function goToMenu() {
-    navigate('/customer/menu')
-  }
-
-  async function exitTable() {
-    clearCustomerSession()
-    try {
-      await api.post('/user/clear-table', { tableNo: session.tableNo })
-      navigate('/tables', { replace: true })
-    } catch (e) {
-      // Even if the API call fails, we still end the local session and return to table selection.
-      navigate('/tables', { replace: true })
+  function exitTable() {
+    // If meal is complete, clear the session fully before going home.
+    // Otherwise keep the session alive so Welcome can resume back here.
+    if (mealCompleted) {
+      clearCustomerSession()
     }
+    navigate('/', { replace: true })
   }
 
   if (loading) {
     return (
       <CustomerLayout title="Track Order">
         <p className="text-sm text-gray-500">Loading...</p>
-      </CustomerLayout>
-    )
-  }
-
-  if (completionKind) {
-    const isMeal = completionKind === 'meal'
-    return (
-      <CustomerLayout title={isMeal ? 'Meal complete' : 'Thank you'}>
-        <div className="max-w-lg mx-auto">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 sm:p-10 text-center">
-            <div
-              className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-3xl font-light"
-              aria-hidden
-            >
-              ✓
-            </div>
-            <h2 className="text-2xl font-semibold text-gray-900 tracking-tight">
-              {isMeal ? 'Enjoyed your meal?' : 'We appreciate your feedback'}
-            </h2>
-            <p className="mt-3 text-sm text-gray-600 leading-relaxed">
-              {isMeal
-                ? 'Your table has been marked as finished. Whenever you are ready, you can head back to the menu or end your session from the header.'
-                : 'Your review helps us serve you better. You can return to the menu to order again, or use Exit when you are done.'}
-            </p>
-            <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-              <button
-                type="button"
-                onClick={goToMenu}
-                className="w-full sm:w-auto px-6 py-3 text-sm font-medium rounded-xl bg-gray-900 text-white hover:bg-gray-800"
-              >
-                Back to menu
-              </button>
-            </div>
-          </div>
-        </div>
       </CustomerLayout>
     )
   }
@@ -194,51 +153,130 @@ export default function CustomerTrack() {
         >
           Back to menu — add more dishes
         </button>
-        <button
-          type="button"
-          onClick={markMealComplete}
-          disabled={mealSubmitting}
-          className="px-3 py-2 text-sm bg-gray-900 text-white rounded-lg disabled:opacity-60 disabled:pointer-events-none"
-        >
-          {mealSubmitting ? 'Saving…' : 'Mark Meal Completed'}
+        <button onClick={() => setCompleteConfirmOpen(true)} className="px-3 py-2 text-sm bg-gray-900 text-white rounded-lg">
+          Mark Meal Completed
         </button>
       </div>
 
-      <div id="customer-review-anchor" className="mt-6 bg-white rounded-xl border border-gray-200 p-4 scroll-mt-20">
-        {allLatestServed ? (
+      <div
+        id="customer-review-anchor"
+        className={`mt-6 rounded-xl border p-4 scroll-mt-20 transition-all duration-300 ${mealCompleted
+          ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-200'
+          : 'bg-white border-gray-200'
+          }`}
+      >
+        {mealCompleted ? (
+          <div className="mb-4 flex items-start gap-3">
+            <span className="text-2xl leading-none mt-0.5">🎉</span>
+            <div>
+              <p className="font-semibold text-emerald-900">Meal completed!</p>
+              <p className="text-sm text-emerald-800 mt-0.5">
+                Please let the waiter know so they can clear the table. Leave us a review before you go!
+              </p>
+            </div>
+          </div>
+        ) : allLatestServed ? (
           <p className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2 mb-3">
             All items served — tell us how we did below.
           </p>
         ) : null}
-        <p className="font-medium text-gray-800 mb-2">Leave a Review</p>
-        <div className="flex items-center gap-3 flex-wrap">
-          <select value={rating} onChange={(e) => setRating(Number(e.target.value))} className="border border-gray-300 rounded-lg px-2 py-1 text-sm">
+        <p className={`font-medium mb-3 ${mealCompleted ? 'text-emerald-900 text-base' : 'text-gray-800'}`}>
+          Leave a Review
+        </p>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 flex-wrap">
             {[5, 4, 3, 2, 1].map((r) => (
-              <option key={r} value={r}>
-                {r} Star
-              </option>
+              <button
+                key={r}
+                type="button"
+                onClick={() => setRating(r)}
+                className={`w-10 h-10 rounded-xl border text-lg transition ${r <= rating
+                  ? 'bg-amber-100 border-amber-300 text-amber-500'
+                  : 'bg-white border-gray-300 text-gray-400 hover:bg-gray-50'
+                  }`}
+                aria-label={`${r} stars`}
+              >
+                ★
+              </button>
             ))}
-          </select>
+          </div>
           <input
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="Comment"
-            className="flex-1 min-w-[160px] border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+            placeholder="Tell us what you liked…"
+            className={`w-full border rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-500 ${mealCompleted ? 'border-emerald-300 bg-white' : 'border-gray-300'
+              }`}
           />
           <button
-            type="button"
             onClick={submitReview}
-            disabled={reviewSubmitting}
-            className="px-3 py-1.5 text-sm bg-gray-900 text-white rounded-lg disabled:opacity-60 disabled:pointer-events-none"
+            className={`w-full py-2.5 text-sm font-semibold rounded-xl transition ${mealCompleted
+              ? 'bg-emerald-700 hover:bg-emerald-800 text-white'
+              : 'bg-gray-900 hover:bg-gray-800 text-white'
+              }`}
           >
-            {reviewSubmitting ? 'Sending…' : 'Submit'}
+            {mealCompleted ? 'Submit review & exit' : 'Submit review'}
           </button>
+          {mealCompleted && (
+            <button
+              type="button"
+              onClick={() => { clearCustomerSession(); navigate('/tables', { replace: true }) }}
+              className="w-full py-2 text-sm text-emerald-800 hover:text-emerald-900 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition"
+            >
+              Skip review — exit table
+            </button>
+          )}
         </div>
       </div>
 
       <button onClick={exitTable} className="mt-6 text-sm text-gray-500 hover:text-gray-800">
-        Exit Table Session
+        Back to Welcome
       </button>
+
+      {completeConfirmOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => !completing && setCompleteConfirmOpen(false)}
+            role="presentation"
+          />
+          <div className="relative w-full max-w-md bg-white rounded-2xl border border-gray-200 shadow-xl p-5">
+            <h2 className="text-lg font-bold text-gray-900">Complete your meal?</h2>
+            <p className="text-sm text-gray-500 mt-1">Table #{session?.tableNo}</p>
+
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 space-y-1.5">
+              <p className="text-sm font-semibold text-amber-900">Before you confirm:</p>
+              <p className="text-sm text-amber-800">
+                • You will stay on this page and can leave a review.
+              </p>
+              <p className="text-sm text-amber-800">
+                • Please let the waiter know so they can clear and mark this table as available for the next guest.
+              </p>
+            </div>
+
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                disabled={completing}
+                onClick={() => setCompleteConfirmOpen(false)}
+                className="flex-1 py-2.5 text-sm border border-gray-300 rounded-xl hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={completing}
+                onClick={confirmMealComplete}
+                className="flex-1 py-2.5 text-sm bg-gray-900 text-white rounded-xl disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {completing ? (
+                  <span className="inline-block w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                ) : null}
+                {completing ? 'Completing…' : 'Yes, complete meal'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </CustomerLayout>
   )
 }

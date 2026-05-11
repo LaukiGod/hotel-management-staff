@@ -3,6 +3,7 @@ import { api } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import AdminPanelHeader from '../components/AdminPanelHeader'
 import { usePopup } from '../context/PopupContext'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 const EMPTY_FORM = { name: '', email: '', role: 'STAFF' }
 
@@ -28,6 +29,9 @@ export default function StaffManagement() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [togglingId, setTogglingId] = useState(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [deleteId, setDeleteId] = useState(null)
+  const [deleteName, setDeleteName] = useState('')
 
   const load = useCallback(async () => {
     try {
@@ -82,12 +86,22 @@ export default function StaffManagement() {
       notify.info("You can't delete your own account.")
       return
     }
-    if (!confirm(`Permanently delete ${name}?`)) return
+    setDeleteId(id)
+    setDeleteName(name)
+    setConfirmOpen(true)
+  }
+
+  async function confirmDelete() {
+    if (!deleteId) return
     try {
-      await api.delete(`/auth/staff/${id}`)
-      setStaff(prev => prev.filter(s => s._id !== id))
+      await api.delete(`/auth/staff/${deleteId}`)
+      setStaff((prev) => prev.filter((s) => s._id !== deleteId))
     } catch (e) {
       notify.error(e.message)
+    } finally {
+      setConfirmOpen(false)
+      setDeleteId(null)
+      setDeleteName('')
     }
   }
 
@@ -299,6 +313,21 @@ export default function StaffManagement() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Delete staff member"
+        description={`Permanently delete ${deleteName}? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        danger
+        onCancel={() => {
+          setConfirmOpen(false)
+          setDeleteId(null)
+          setDeleteName('')
+        }}
+        onConfirm={confirmDelete}
+      />
       </>
       )}
     </div>

@@ -12,6 +12,7 @@ const LINE_LABELS = {
   preparing: { label: 'Cooking', className: 'bg-amber-100 text-amber-900' },
   ready: { label: 'Ready', className: 'bg-cyan-100 text-cyan-900' },
   served: { label: 'Served', className: 'bg-emerald-100 text-emerald-900' },
+  cancelled: { label: 'Cancelled', className: 'bg-red-100 text-red-900' },
 }
 
 export default function CustomerTrack() {

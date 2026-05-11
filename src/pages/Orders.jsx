@@ -5,15 +5,16 @@ import AllergyBadge from '../components/AllergyBadge'
 import AdminPanelHeader from '../components/AdminPanelHeader'
 import { usePopup } from '../context/PopupContext'
 
-const STATUSES = ['created', 'confirmed', 'preparing', 'served', 'completed']
+const STATUSES = ['created', 'confirmed', 'preparing', 'served', 'completed', 'cancelled']
 
-const LINE_ITEM_STATUSES = ['queued', 'preparing', 'ready', 'served']
+const LINE_ITEM_STATUSES = ['queued', 'preparing', 'ready', 'served', 'cancelled']
 
 const LINE_STATUS_LABEL = {
   queued: 'Received',
   preparing: 'Cooking',
   ready: 'Ready',
   served: 'Served',
+  cancelled: 'Cancelled',
 }
 
 export default function Orders() {

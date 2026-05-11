@@ -3,9 +3,11 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../../api/client'
 import { clearCustomerSession, getCustomerSession, isQuickBrowseSession, setCustomerSession } from './customerSession'
 import { sessionMatchesTableUser, tableHasOpenCustomerTicket } from './customerOrderUtils'
+import { usePopup } from '../../context/PopupContext'
 
 export default function CustomerLogin() {
   const navigate = useNavigate()
+  const notify = usePopup()
   const [searchParams] = useSearchParams()
   const tableIdFromQR = searchParams.get('tableId') || ''
   const [name, setName] = useState('')
@@ -77,7 +79,7 @@ export default function CustomerLogin() {
       })
       navigate('/customer/menu')
     } catch (err) {
-      alert(err.message)
+      notify.error(err.message)
     } finally {
       setLoading(false)
     }

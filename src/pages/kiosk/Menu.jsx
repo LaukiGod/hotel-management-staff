@@ -5,6 +5,7 @@ import { kioskAxios } from '../../api/kioskAxios'
 import KioskShell from '../../components/KioskShell'
 import KioskBackButton from '../../components/KioskBackButton'
 import { useKioskSession } from '../../context/KioskSessionContext'
+import { usePopup } from '../../context/PopupContext'
 
 const UNCATEGORIZED = 'Other'
 
@@ -31,6 +32,7 @@ function groupByCategory(dishes) {
 export default function KioskMenu() {
   const navigate = useNavigate()
   const { tableNo, user, cart, setQty, allergies, setAllergies, setOrderId } = useKioskSession()
+  const notify = usePopup()
   const [dishes, setDishes] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -123,7 +125,7 @@ export default function KioskMenu() {
       setConfirmOpen(false)
       navigate('/order-tracking')
     } catch (e) {
-      alert(e?.response?.data?.message || e.message || 'Failed to confirm order')
+      notify.error(e?.response?.data?.message || e.message || 'Failed to confirm order')
     } finally {
       setPlacing(false)
     }

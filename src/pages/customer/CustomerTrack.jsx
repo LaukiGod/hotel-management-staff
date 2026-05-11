@@ -5,6 +5,7 @@ import { useCustomerVerifySession } from '../../hooks/useCustomerVerifySession'
 import CustomerLayout from './CustomerLayout'
 import { normalizedLines } from './customerOrderUtils'
 import { clearCustomerSession, getCustomerSession, patchCustomerSession } from './customerSession'
+import { usePopup } from '../../context/PopupContext'
 
 const LINE_LABELS = {
   queued: { label: 'Received', className: 'bg-gray-100 text-gray-800' },
@@ -15,6 +16,7 @@ const LINE_LABELS = {
 
 export default function CustomerTrack() {
   const navigate = useNavigate()
+  const notify = usePopup()
   useCustomerVerifySession()
   const session = getCustomerSession()
   const [orders, setOrders] = useState([])
@@ -28,7 +30,7 @@ export default function CustomerTrack() {
       const data = await api.get(`/user/orders/${session.tableNo}`)
       setOrders(data)
     } catch (e) {
-      alert(e.message)
+      notify.error(e.message)
     } finally {
       setLoading(false)
     }
@@ -59,9 +61,9 @@ export default function CustomerTrack() {
       await api.post('/user/meal-complete', { tableNo: session.tableNo })
       patchCustomerSession({ resumePath: '/customer/menu' })
       await loadOrders()
-      alert('Meal marked complete.')
+      notify.success('Meal marked complete.')
     } catch (e) {
-      alert(e.message)
+      notify.error(e.message)
     }
   }
 
@@ -69,9 +71,9 @@ export default function CustomerTrack() {
     if (!latestOrder?._id) return
     try {
       await api.post('/user/review', { orderId: latestOrder._id, rating, comment })
-      alert('Review submitted.')
+      notify.success('Review submitted.')
     } catch (e) {
-      alert(e.message)
+      notify.error(e.message)
     }
   }
 

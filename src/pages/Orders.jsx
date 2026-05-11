@@ -3,6 +3,7 @@ import { api } from '../api/client'
 import StatusBadge from '../components/StatusBadge'
 import AllergyBadge from '../components/AllergyBadge'
 import AdminPanelHeader from '../components/AdminPanelHeader'
+import { usePopup } from '../context/PopupContext'
 
 const STATUSES = ['created', 'confirmed', 'preparing', 'served', 'completed']
 
@@ -16,6 +17,7 @@ const LINE_STATUS_LABEL = {
 }
 
 export default function Orders() {
+  const notify = usePopup()
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -82,7 +84,7 @@ export default function Orders() {
       )
       setSelected((prev) => (prev?._id === orderId ? { ...prev, status } : prev))
     } catch (e) {
-      alert(e.message)
+      notify.error(e.message)
     } finally {
       setUpdating(null)
     }
@@ -98,7 +100,7 @@ export default function Orders() {
         setSelected((prev) => (prev?._id === updated._id ? updated : prev))
       }
     } catch (e) {
-      alert(e.message)
+      notify.error(e.message)
     } finally {
       setUpdating(null)
     }

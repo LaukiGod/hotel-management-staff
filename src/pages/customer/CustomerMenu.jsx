@@ -4,6 +4,7 @@ import { api } from '../../api/client'
 import { useCustomerVerifySession } from '../../hooks/useCustomerVerifySession'
 import CustomerLayout from './CustomerLayout'
 import { getCustomerSession, isQuickBrowseSession, setCustomerSession, setQuickBrowseSession } from './customerSession'
+import { usePopup } from '../../context/PopupContext'
 
 const UNCATEGORIZED = 'Other'
 
@@ -27,8 +28,13 @@ function groupByCategory(dishes) {
   return keys.map((name) => ({ name, dishes: m.get(name) }))
 }
 
+function isDishAvailable(dish) {
+  return dish?.isAvailable !== false
+}
+
 export default function CustomerMenu() {
   const navigate = useNavigate()
+  const notify = usePopup()
   const [searchParams] = useSearchParams()
   const [sessionRev, setSessionRev] = useState(0)
   const [sessionReady, setSessionReady] = useState(() => {
@@ -78,7 +84,7 @@ export default function CustomerMenu() {
       .get('/user/menu')
       .then((data) => setMenu(Array.isArray(data) ? data : data?.dishes || []))
       .catch((e) => {
-        alert(e.message)
+        notify.error(e.message)
         setMenu([])
       })
       .finally(() => setLoading(false))
@@ -116,7 +122,27 @@ export default function CustomerMenu() {
     [cart, menu]
   )
 
-  function changeQty(dishId, delta) {
+  useEffect(() => {
+    setCart((prev) => {
+      let changed = false
+      const next = { ...prev }
+      for (const dish of menu) {
+        if (!isDishAvailable(dish) && next[dish._id] > 0) {
+          next[dish._id] = 0
+          changed = true
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [menu])
+
+  function changeQty(dish, delta) {
+    if (!dish?._id) return
+    if (!isDishAvailable(dish)) {
+      if (delta > 0) notify.info(`${dish.name || 'This dish'} is currently unavailable.`)
+      return
+    }
+    const dishId = dish._id
     setCart((prev) => {
       const next = Math.max((prev[dishId] || 0) + delta, 0)
       return { ...prev, [dishId]: next }
@@ -145,7 +171,7 @@ export default function CustomerMenu() {
     try {
       await submitOrderOnly()
     } catch (e) {
-      alert(e.message)
+      notify.error(e.message)
     } finally {
       setOrdering(false)
     }
@@ -171,11 +197,11 @@ export default function CustomerMenu() {
     const s = getCustomerSession()
     const digits = String(detailPhone || '').replace(/\D/g, '').slice(0, 10)
     if (!detailName.trim()) {
-      alert('Please enter your name.')
+      notify.info('Please enter your name.')
       return
     }
     if (digits && !/^\d{10}$/.test(digits)) {
-      alert('Phone number must be exactly 10 digits (or leave it blank).')
+      notify.info('Phone number must be exactly 10 digits (or leave it blank).')
       return
     }
     if (!s?.tableNo) return
@@ -204,7 +230,7 @@ export default function CustomerMenu() {
       setDetailAllergiesText('')
       await submitOrderOnly()
     } catch (e) {
-      alert(e.message)
+      notify.error(e.message)
     } finally {
       setOrdering(false)
     }
@@ -339,12 +365,7 @@ export default function CustomerMenu() {
                       <ul className="flex w-max gap-3 pr-1 md:grid md:w-full md:max-w-none md:grid-cols-2 md:gap-4 lg:grid-cols-3 md:pr-0">
                         {group.dishes.map((dish) => (
                           <li key={dish._id} className="w-40 shrink-0 snap-start sm:w-44 md:w-auto md:min-w-0">
-                            <DishRowCard
-                              dish={dish}
-                              cart={cart}
-                              onOpen={() => setSelectedDish(dish)}
-                              onChangeQty={changeQty}
-                            />
+                            <DishRowCard dish={dish} cart={cart} onOpen={() => setSelectedDish(dish)} onChangeQty={changeQty} />
                           </li>
                         ))}
                       </ul>
@@ -355,13 +376,18 @@ export default function CustomerMenu() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {menuForView.map((dish) => (
+                  (() => {
+                    const unavailable = !isDishAvailable(dish)
+                    return (
                   <div
                     key={dish._id}
                     onClick={() => setSelectedDish(dish)}
                     onKeyDown={(e) => e.key === 'Enter' && setSelectedDish(dish)}
                     role="button"
                     tabIndex={0}
-                    className="bg-white border border-gray-200 rounded-2xl p-3 focus:outline-none focus:ring-2 focus:ring-gray-400"
+                    className={`border rounded-2xl p-3 focus:outline-none focus:ring-2 focus:ring-gray-400 ${
+                      unavailable ? 'bg-gray-50 border-gray-300 opacity-75' : 'bg-white border-gray-200'
+                    }`}
                   >
                     <div className="flex gap-3">
                       {dish.imageUrl ? (
@@ -373,22 +399,27 @@ export default function CustomerMenu() {
                       )}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-900 truncate">{dish.name}</p>
+                        {unavailable ? (
+                          <p className="text-[11px] font-semibold text-amber-700 mt-0.5">Currently unavailable</p>
+                        ) : null}
                         <p className="text-xs text-gray-500 line-clamp-2 mt-0.5">{dish.recipe || 'Freshly prepared'}</p>
                         <div className="mt-2 flex items-center justify-between gap-2">
                           <p className="text-sm font-semibold text-gray-900 shrink-0">Rs {dish.price}</p>
                           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                             <button
                               type="button"
-                              className="w-8 h-8 rounded-lg bg-gray-100 text-sm"
-                              onClick={() => changeQty(dish._id, -1)}
+                              disabled={unavailable}
+                              className="w-8 h-8 rounded-lg bg-gray-100 text-sm disabled:opacity-40"
+                              onClick={() => changeQty(dish, -1)}
                             >
                               -
                             </button>
                             <span className="text-sm font-medium w-6 text-center">{cart[dish._id] || 0}</span>
                             <button
                               type="button"
-                              className="w-8 h-8 rounded-lg bg-gray-900 text-white text-sm"
-                              onClick={() => changeQty(dish._id, 1)}
+                              disabled={unavailable}
+                              className="w-8 h-8 rounded-lg bg-gray-900 text-white text-sm disabled:opacity-40"
+                              onClick={() => changeQty(dish, 1)}
                             >
                               +
                             </button>
@@ -397,6 +428,8 @@ export default function CustomerMenu() {
                       </div>
                     </div>
                   </div>
+                    )
+                  })()
                 ))}
               </div>
             )}
@@ -520,17 +553,30 @@ export default function CustomerMenu() {
                 <p className="text-base font-semibold text-gray-900">Rs {selectedDish.price}</p>
               </div>
               <p className="text-sm text-gray-600 mt-3">{selectedDish.recipe || 'Freshly prepared for your table.'}</p>
+              {!isDishAvailable(selectedDish) ? (
+                <p className="text-xs font-semibold text-amber-700 mt-2">This dish is currently unavailable</p>
+              ) : null}
               {selectedDish.ingredients?.length ? (
                 <p className="text-xs text-gray-500 mt-2">Ingredients: {selectedDish.ingredients.join(', ')}</p>
               ) : null}
 
               <div className="mt-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <button type="button" className="w-8 h-8 rounded-lg bg-gray-100" onClick={() => changeQty(selectedDish._id, -1)}>
+                  <button
+                    type="button"
+                    disabled={!isDishAvailable(selectedDish)}
+                    className="w-8 h-8 rounded-lg bg-gray-100 disabled:opacity-40"
+                    onClick={() => changeQty(selectedDish, -1)}
+                  >
                     -
                   </button>
                   <span className="w-8 text-center">{cart[selectedDish._id] || 0}</span>
-                  <button type="button" className="w-8 h-8 rounded-lg bg-gray-900 text-white" onClick={() => changeQty(selectedDish._id, 1)}>
+                  <button
+                    type="button"
+                    disabled={!isDishAvailable(selectedDish)}
+                    className="w-8 h-8 rounded-lg bg-gray-900 text-white disabled:opacity-40"
+                    onClick={() => changeQty(selectedDish, 1)}
+                  >
                     +
                   </button>
                 </div>
@@ -564,8 +610,9 @@ export default function CustomerMenu() {
 }
 
 function DishRowCard({ dish, cart, onOpen, onChangeQty }) {
+  const unavailable = !isDishAvailable(dish)
   return (
-    <div className="h-full text-left bg-white border border-gray-200 rounded-2xl p-2 flex flex-col">
+    <div className={`h-full text-left border rounded-2xl p-2 flex flex-col ${unavailable ? 'bg-gray-50 border-gray-300 opacity-75' : 'bg-white border-gray-200'}`}>
       <button type="button" onClick={onOpen} className="w-full text-left grow flex flex-col">
         {dish.imageUrl ? (
           <img src={dish.imageUrl} alt="" className="w-full h-24 object-cover rounded-xl" />
@@ -573,14 +620,25 @@ function DishRowCard({ dish, cart, onOpen, onChangeQty }) {
           <div className="w-full h-24 rounded-xl bg-gray-100 flex items-center justify-center text-[10px] text-gray-500">No image</div>
         )}
         <p className="mt-2 text-xs font-semibold text-gray-900 line-clamp-2">{dish.name}</p>
+        {unavailable ? <p className="text-[10px] font-semibold text-amber-700 mt-0.5">Unavailable</p> : null}
         <p className="text-xs text-gray-500">Rs {dish.price}</p>
       </button>
       <div className="mt-2 flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
-        <button type="button" className="w-7 h-7 rounded-lg bg-gray-100 text-sm" onClick={() => onChangeQty(dish._id, -1)}>
+        <button
+          type="button"
+          disabled={unavailable}
+          className="w-7 h-7 rounded-lg bg-gray-100 text-sm disabled:opacity-40"
+          onClick={() => onChangeQty(dish, -1)}
+        >
           -
         </button>
         <span className="text-xs font-medium w-5 text-center">{cart[dish._id] || 0}</span>
-        <button type="button" className="w-7 h-7 rounded-lg bg-gray-900 text-white text-sm" onClick={() => onChangeQty(dish._id, 1)}>
+        <button
+          type="button"
+          disabled={unavailable}
+          className="w-7 h-7 rounded-lg bg-gray-900 text-white text-sm disabled:opacity-40"
+          onClick={() => onChangeQty(dish, 1)}
+        >
           +
         </button>
       </div>

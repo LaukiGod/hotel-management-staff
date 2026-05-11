@@ -23,6 +23,10 @@ export default function CustomerTrack() {
   const [loading, setLoading] = useState(true)
   const [rating, setRating] = useState(5)
   const [comment, setComment] = useState('')
+  /** 'meal' | 'review' | null — full-page thank-you after successful actions */
+  const [completionKind, setCompletionKind] = useState(null)
+  const [mealSubmitting, setMealSubmitting] = useState(false)
+  const [reviewSubmitting, setReviewSubmitting] = useState(false)
 
   async function loadOrders() {
     if (!session?.tableNo) return
@@ -41,10 +45,11 @@ export default function CustomerTrack() {
       navigate('/tables', { replace: true })
       return
     }
+    if (completionKind) return
     loadOrders()
     const t = setInterval(loadOrders, 4000)
     return () => clearInterval(t)
-  }, [navigate, session?.tableNo])
+  }, [navigate, session?.tableNo, completionKind])
 
   const latestOrder = useMemo(() => orders[0], [orders])
   const latestLines = useMemo(() => normalizedLines(latestOrder), [latestOrder])
@@ -57,24 +62,35 @@ export default function CustomerTrack() {
   }, [allLatestServed])
 
   async function markMealComplete() {
+    if (mealSubmitting) return
+    setMealSubmitting(true)
     try {
       await api.post('/user/meal-complete', { tableNo: session.tableNo })
       patchCustomerSession({ resumePath: '/customer/menu' })
       await loadOrders()
-      notify.success('Meal marked complete.')
+      setCompletionKind('meal')
     } catch (e) {
       notify.error(e.message)
+    } finally {
+      setMealSubmitting(false)
     }
   }
 
   async function submitReview() {
-    if (!latestOrder?._id) return
+    if (!latestOrder?._id || reviewSubmitting) return
+    setReviewSubmitting(true)
     try {
       await api.post('/user/review', { orderId: latestOrder._id, rating, comment })
-      notify.success('Review submitted.')
+      setCompletionKind('review')
     } catch (e) {
       notify.error(e.message)
+    } finally {
+      setReviewSubmitting(false)
     }
+  }
+
+  function goToMenu() {
+    navigate('/customer/menu')
   }
 
   async function exitTable() {
@@ -92,6 +108,41 @@ export default function CustomerTrack() {
     return (
       <CustomerLayout title="Track Order">
         <p className="text-sm text-gray-500">Loading...</p>
+      </CustomerLayout>
+    )
+  }
+
+  if (completionKind) {
+    const isMeal = completionKind === 'meal'
+    return (
+      <CustomerLayout title={isMeal ? 'Meal complete' : 'Thank you'}>
+        <div className="max-w-lg mx-auto">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 sm:p-10 text-center">
+            <div
+              className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-3xl font-light"
+              aria-hidden
+            >
+              ✓
+            </div>
+            <h2 className="text-2xl font-semibold text-gray-900 tracking-tight">
+              {isMeal ? 'Enjoyed your meal?' : 'We appreciate your feedback'}
+            </h2>
+            <p className="mt-3 text-sm text-gray-600 leading-relaxed">
+              {isMeal
+                ? 'Your table has been marked as finished. Whenever you are ready, you can head back to the menu or end your session from the header.'
+                : 'Your review helps us serve you better. You can return to the menu to order again, or use Exit when you are done.'}
+            </p>
+            <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                type="button"
+                onClick={goToMenu}
+                className="w-full sm:w-auto px-6 py-3 text-sm font-medium rounded-xl bg-gray-900 text-white hover:bg-gray-800"
+              >
+                Back to menu
+              </button>
+            </div>
+          </div>
+        </div>
       </CustomerLayout>
     )
   }
@@ -143,8 +194,13 @@ export default function CustomerTrack() {
         >
           Back to menu — add more dishes
         </button>
-        <button onClick={markMealComplete} className="px-3 py-2 text-sm bg-gray-900 text-white rounded-lg">
-          Mark Meal Completed
+        <button
+          type="button"
+          onClick={markMealComplete}
+          disabled={mealSubmitting}
+          className="px-3 py-2 text-sm bg-gray-900 text-white rounded-lg disabled:opacity-60 disabled:pointer-events-none"
+        >
+          {mealSubmitting ? 'Saving…' : 'Mark Meal Completed'}
         </button>
       </div>
 
@@ -169,8 +225,13 @@ export default function CustomerTrack() {
             placeholder="Comment"
             className="flex-1 min-w-[160px] border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
           />
-          <button onClick={submitReview} className="px-3 py-1.5 text-sm bg-gray-900 text-white rounded-lg">
-            Submit
+          <button
+            type="button"
+            onClick={submitReview}
+            disabled={reviewSubmitting}
+            className="px-3 py-1.5 text-sm bg-gray-900 text-white rounded-lg disabled:opacity-60 disabled:pointer-events-none"
+          >
+            {reviewSubmitting ? 'Sending…' : 'Submit'}
           </button>
         </div>
       </div>

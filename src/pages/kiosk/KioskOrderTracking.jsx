@@ -11,6 +11,7 @@ const LINE_LABELS = {
   preparing: { label: 'Cooking', className: 'bg-amber-100 text-amber-900 border-amber-200' },
   ready: { label: 'Ready', className: 'bg-cyan-100 text-cyan-900 border-cyan-200' },
   served: { label: 'Served', className: 'bg-emerald-100 text-emerald-900 border-emerald-200' },
+  cancelled: { label: 'Cancelled', className: 'bg-red-100 text-red-900 border-red-200' },
 }
 
 function normalizedLines(order) {

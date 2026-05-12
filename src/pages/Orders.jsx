@@ -5,15 +5,16 @@ import AllergyBadge from '../components/AllergyBadge'
 import AdminPanelHeader from '../components/AdminPanelHeader'
 import { usePopup } from '../context/PopupContext'
 
-const STATUSES = ['created', 'confirmed', 'preparing', 'served', 'completed']
+const STATUSES = ['created', 'confirmed', 'preparing', 'served', 'completed', 'cancelled']
 
-const LINE_ITEM_STATUSES = ['queued', 'preparing', 'ready', 'served']
+const LINE_ITEM_STATUSES = ['queued', 'preparing', 'ready', 'served', 'cancelled']
 
 const LINE_STATUS_LABEL = {
   queued: 'Received',
   preparing: 'Cooking',
   ready: 'Ready',
   served: 'Served',
+  cancelled: 'Cancelled',
 }
 
 export default function Orders() {
@@ -30,6 +31,7 @@ export default function Orders() {
   const [tables, setTables] = useState([])
   const [menu, setMenu] = useState([])
   const [editMenuQuery, setEditMenuQuery] = useState('')
+  const [menuQuery, setMenuQuery] = useState('')
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState('')
   const [tableNo, setTableNo] = useState('')
@@ -175,6 +177,23 @@ export default function Orders() {
       return name.includes(q) || price.includes(q)
     })
   }, [menu, editMenuQuery])
+
+  const availableMenu = useMemo(() => {
+    return Array.isArray(menu)
+      ? menu.filter((d) => d?.isAvailable !== false)
+      : []
+  }, [menu])
+
+  const filteredMenu = useMemo(() => {
+    const list = availableMenu
+    const q = String(menuQuery || '').trim().toLowerCase()
+    if (!q) return list
+    return list.filter((d) => {
+      const name = String(d?.name || '').toLowerCase()
+      const price = String(d?.price ?? '').toLowerCase()
+      return name.includes(q) || price.includes(q)
+    })
+  }, [availableMenu, menuQuery])
 
   function openAdd() {
     setAddOpen(true)
@@ -658,7 +677,7 @@ export default function Orders() {
       {addOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={closeAdd} />
-          <div className="relative w-full max-w-3xl bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+          <div className="relative w-full max-w-3xl max-h-[90vh] bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
               <div>
                 <p className="text-xs text-gray-500">Create order (staff)</p>
@@ -667,7 +686,7 @@ export default function Orders() {
               <button onClick={closeAdd} className="text-sm text-gray-500 hover:text-gray-900">Close</button>
             </div>
 
-            <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-auto h-full min-h-0">
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">Table</label>
@@ -733,14 +752,58 @@ export default function Orders() {
                 </div>
               </div>
 
-              <div>
-                <p className="text-sm font-semibold text-gray-900">Menu</p>
-                <p className="text-xs text-gray-500 mt-0.5 mb-3">Tap +/− to set quantity</p>
+              <div className="flex h-full min-h-[420px] flex-col">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">Menu</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Tap +/− to set quantity</p>
+                  </div>
+                  <p className="text-xs text-gray-500">{filteredMenu.length}/{availableMenu.length} items</p>
+                </div>
+                <div className="relative mb-3">
+                  <svg
+                    aria-hidden
+                    viewBox="0 0 24 24"
+                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+                    fill="none"
+                  >
+                    <path
+                      d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    />
+                    <path
+                      d="M16.25 16.25 21 21"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <input
+                    value={menuQuery}
+                    onChange={(e) => setMenuQuery(e.target.value)}
+                    placeholder="Search menu items…"
+                    className="w-full rounded-xl border border-gray-300 bg-white pl-9 pr-10 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {menuQuery.trim() ? (
+                    <button
+                      type="button"
+                      onClick={() => setMenuQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-lg p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                      aria-label="Clear menu search"
+                    >
+                      <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4" fill="none">
+                        <path d="M6 6 18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                        <path d="M18 6 6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  ) : null}
+                </div>
                 <div className="max-h-[420px] overflow-auto pr-1 space-y-2">
-                  {menu.length === 0 ? (
-                    <p className="text-sm text-gray-400">No dishes found. Add dishes from Admin Menu.</p>
+                  {filteredMenu.length === 0 ? (
+                    <p className="text-sm text-gray-400">No dishes match your search.</p>
                   ) : (
-                    menu.map((dish) => (
+                    filteredMenu.map((dish) => (
                       <div key={dish._id} className="border border-gray-200 rounded-xl p-3 flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="font-semibold text-gray-900 truncate">{dish.name}</p>

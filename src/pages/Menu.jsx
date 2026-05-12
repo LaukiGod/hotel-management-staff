@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import AdminPanelHeader from '../components/AdminPanelHeader'
 import { usePopup } from '../context/PopupContext'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 const EMPTY_FORM = { name: '', price: '', ingredients: '', recipe: '', imageUrl: '', category: '', isAvailable: true }
 const FILTERS_KEY = 'adminMenuFilters:v1'
@@ -35,6 +36,8 @@ export default function Menu() {
   const [editDishId, setEditDishId] = useState(null)
   const [saving, setSaving] = useState(false)
   const [filters, setFilters] = useState(loadInitialFilters)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [deleteId, setDeleteId] = useState(null)
 
   useEffect(() => { load() }, [])
 
@@ -103,13 +106,21 @@ export default function Menu() {
     }
   }
 
-  async function handleDelete(id) {
-    if (!confirm('Delete this dish?')) return
+  function requestDelete(id) {
+    setDeleteId(id)
+    setConfirmOpen(true)
+  }
+
+  async function confirmDelete() {
+    if (!deleteId) return
     try {
-      await api.delete(`/restaurant/dish/${id}`)
-      setDishes(prev => prev.filter(d => d._id !== id))
+      await api.delete(`/restaurant/dish/${deleteId}`)
+      setDishes((prev) => prev.filter((d) => d._id !== deleteId))
     } catch (e) {
       notify.error(e.message)
+    } finally {
+      setConfirmOpen(false)
+      setDeleteId(null)
     }
   }
 
@@ -314,7 +325,7 @@ export default function Menu() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleDelete(dish._id)}
+                    onClick={() => requestDelete(dish._id)}
                     className="inline-flex items-center justify-center h-9 rounded-lg text-xs font-semibold border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-300 transition"
                   >
                     Delete
@@ -414,6 +425,20 @@ export default function Menu() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Delete dish"
+        description="Are you sure you want to delete this dish? This cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        danger
+        onCancel={() => {
+          setConfirmOpen(false)
+          setDeleteId(null)
+        }}
+        onConfirm={confirmDelete}
+      />
     </div>
       )}
     </div>

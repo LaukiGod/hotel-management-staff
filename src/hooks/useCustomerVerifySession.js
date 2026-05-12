@@ -26,10 +26,23 @@ export function useCustomerVerifySession() {
       }
       if (isQuickBrowseSession(session)) {
         if (pathname === '/customer/track') {
-          navigate('/customer/menu', { replace: true })
-          return
+          // Allow quick-browse sessions on the tracking page only if the table
+          // already has orders (e.g. staff added items). Otherwise send them to menu.
+          try {
+            const orders = await api.get(`/user/orders/${session.tableNo}`)
+            if (cancelled) return
+            const hasOrders = Array.isArray(orders) ? orders.length > 0 : false
+            if (!hasOrders) {
+              navigate('/customer/menu', { replace: true })
+              return
+            }
+          } catch {
+            if (cancelled) return
+            navigate('/customer/menu', { replace: true })
+            return
+          }
         }
-        if (pathname === '/customer/menu') {
+        if (pathname === '/customer/menu' || pathname === '/customer/track') {
           setCustomerResumePath(pathname)
         }
         return

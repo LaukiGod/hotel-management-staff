@@ -3,6 +3,7 @@ import { api } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import AdminPanelHeader from '../components/AdminPanelHeader'
 import { usePopup } from '../context/PopupContext'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 function getRowClass(item) {
   const now = new Date()
@@ -32,6 +33,8 @@ export default function Inventory() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [editId, setEditId] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [deleteId, setDeleteId] = useState(null)
 
   useEffect(() => { load() }, [])
 
@@ -105,13 +108,21 @@ export default function Inventory() {
     }
   }
 
-  async function handleDelete(id) {
-    if (!confirm('Delete this item?')) return
+  function requestDelete(id) {
+    setDeleteId(id)
+    setConfirmOpen(true)
+  }
+
+  async function confirmDelete() {
+    if (!deleteId) return
     try {
-      await api.delete(`/restaurant/inventory/${id}`)
-      setItems(prev => prev.filter(i => i._id !== id))
+      await api.delete(`/restaurant/inventory/${deleteId}`)
+      setItems((prev) => prev.filter((i) => i._id !== deleteId))
     } catch (e) {
       notify.error(e.message)
+    } finally {
+      setConfirmOpen(false)
+      setDeleteId(null)
     }
   }
 
@@ -176,7 +187,7 @@ export default function Inventory() {
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
                       <button onClick={() => openEdit(item)} className="text-blue-600 hover:underline text-xs">Edit</button>
-                      <button onClick={() => handleDelete(item._id)} className="text-red-500 hover:underline text-xs">Delete</button>
+                      <button onClick={() => requestDelete(item._id)} className="text-red-500 hover:underline text-xs">Delete</button>
                     </div>
                   </td>
                 )}
@@ -211,6 +222,20 @@ export default function Inventory() {
       )}
     </div>
       )}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Delete item"
+        description="Are you sure you want to delete this inventory item? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        danger
+        onCancel={() => {
+          setConfirmOpen(false)
+          setDeleteId(null)
+        }}
+        onConfirm={confirmDelete}
+      />
     </div>
   )
 }

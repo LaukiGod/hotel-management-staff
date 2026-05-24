@@ -52,13 +52,15 @@ export default function CustomerTrack() {
 
   const latestOrder = useMemo(() => orders[0], [orders])
   const latestLines = useMemo(() => normalizedLines(latestOrder), [latestOrder])
-  const allLatestServed =
-    latestLines.length > 0 && latestLines.every((li) => li.status === 'served')
+  const allLatestServed = latestLines.length > 0 && latestLines.every((li) => li.status === 'served')
+  const mealReadyForCompletion = allLatestServed && !mealCompleted
+  const canReview = allLatestServed || mealCompleted
+  const ratingOptions = [1, 2, 3, 4, 5]
 
   useEffect(() => {
-    if (!allLatestServed) return
+    if (!allLatestServed && !mealCompleted) return
     document.getElementById('customer-review-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }, [allLatestServed])
+  }, [allLatestServed, mealCompleted])
 
   async function confirmMealComplete() {
     setCompleting(true)
@@ -78,6 +80,11 @@ export default function CustomerTrack() {
 
   async function submitReview() {
     if (!latestOrder?._id) return
+    if (!canReview) {
+      notify.error('You can leave a review after your full order has been served.')
+      return
+    }
+
     try {
       await api.post('/user/review', { orderId: latestOrder._id, rating, comment })
       notify.success('Review submitted. Thank you!')
@@ -88,15 +95,6 @@ export default function CustomerTrack() {
     } catch (e) {
       notify.error(e.message)
     }
-  }
-
-  function exitTable() {
-    // If meal is complete, clear the session fully before going home.
-    // Otherwise keep the session alive so Welcome can resume back here.
-    if (mealCompleted) {
-      clearCustomerSession()
-    }
-    navigate('/', { replace: true })
   }
 
   if (loading) {
@@ -154,84 +152,100 @@ export default function CustomerTrack() {
         >
           Back to menu — add more dishes
         </button>
-        <button onClick={() => setCompleteConfirmOpen(true)} className="px-3 py-2 text-sm bg-gray-900 text-white rounded-lg">
-          Mark Meal Completed
-        </button>
+        {mealReadyForCompletion ? (
+          <button onClick={() => setCompleteConfirmOpen(true)} className="px-3 py-2 text-sm bg-gray-900 text-white rounded-lg">
+            Mark Meal Completed
+          </button>
+        ) : null}
       </div>
 
-      <div
-        id="customer-review-anchor"
-        className={`mt-6 rounded-xl border p-4 scroll-mt-20 transition-all duration-300 ${mealCompleted
-          ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-200'
-          : 'bg-white border-gray-200'
-          }`}
-      >
-        {mealCompleted ? (
-          <div className="mb-4 flex items-start gap-3">
-            <span className="text-2xl leading-none mt-0.5">🎉</span>
-            <div>
-              <p className="font-semibold text-emerald-900">Meal completed!</p>
-              <p className="text-sm text-emerald-800 mt-0.5">
-                Please let the waiter know so they can clear the table. Leave us a review before you go!
+      {!canReview ? (
+        <div className="mt-6 rounded-2xl border border-gray-200 bg-gray-50 p-5 text-sm text-gray-700">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-500">⏳</div>
+            <div className="space-y-2">
+              <p className="font-semibold text-gray-900">Hang tight — your food is still on the way.</p>
+              <p>
+                Your order is getting the best it can be. In the meantime, feel free to add more dishes or call your waiter if you need anything.
               </p>
             </div>
           </div>
-        ) : allLatestServed ? (
-          <p className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2 mb-3">
-            All items served — tell us how we did below.
+        </div>
+      ) : (
+        <div
+          id="customer-review-anchor"
+          className={`mt-6 rounded-xl border p-4 scroll-mt-20 transition-all duration-300 ${mealCompleted
+            ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-200'
+            : 'bg-white border-gray-200'
+            }`}
+        >
+          {mealCompleted ? (
+            <div className="mb-4 flex items-start gap-3">
+              <span className="text-2xl leading-none mt-0.5">🎉</span>
+              <div>
+                <p className="font-semibold text-emerald-900">Meal completed!</p>
+                <p className="text-sm text-emerald-800 mt-0.5">
+                  Please let the waiter know so they can clear the table. Leave us a review before you go!
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2 mb-3">
+              Your meal is served — share your experience below.
+            </p>
+          )}
+          <p className={`font-medium mb-3 ${mealCompleted ? 'text-emerald-900 text-base' : 'text-gray-800'}`}>
+            Leave a Review
           </p>
-        ) : null}
-        <p className={`font-medium mb-3 ${mealCompleted ? 'text-emerald-900 text-base' : 'text-gray-800'}`}>
-          Leave a Review
-        </p>
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            {[5, 4, 3, 2, 1].map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => setRating(r)}
-                className={`w-10 h-10 rounded-xl border text-lg transition ${r <= rating
-                  ? 'bg-amber-100 border-amber-300 text-amber-500'
-                  : 'bg-white border-gray-300 text-gray-400 hover:bg-gray-50'
-                  }`}
-                aria-label={`${r} stars`}
-              >
-                ★
-              </button>
-            ))}
-          </div>
-          <input
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder="Tell us what you liked…"
-            className={`w-full border rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-500 ${mealCompleted ? 'border-emerald-300 bg-white' : 'border-gray-300'
-              }`}
-          />
-          <button
-            onClick={submitReview}
-            className={`w-full py-2.5 text-sm font-semibold rounded-xl transition ${mealCompleted
-              ? 'bg-emerald-700 hover:bg-emerald-800 text-white'
-              : 'bg-gray-900 hover:bg-gray-800 text-white'
-              }`}
-          >
-            {mealCompleted ? 'Submit review & exit' : 'Submit review'}
-          </button>
-          {mealCompleted && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              {ratingOptions.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setRating(r)}
+                  className={`w-10 h-10 rounded-xl border text-lg transition ${r <= rating
+                    ? 'bg-amber-100 border-amber-300 text-amber-500'
+                    : 'bg-white border-gray-300 text-gray-400 hover:bg-gray-50'
+                    }`}
+                  aria-label={`${r} star${r === 1 ? '' : 's'}`}
+                >
+                  ★
+                </button>
+              ))}
+            </div>
+            <input
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="Tell us what you liked…"
+              className={`w-full border rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-500 ${mealCompleted ? 'border-emerald-300 bg-white' : 'border-gray-300'
+                }`}
+            />
             <button
               type="button"
-              onClick={() => { clearCustomerSession(); navigate('/tables', { replace: true }) }}
-              className="w-full py-2 text-sm text-emerald-800 hover:text-emerald-900 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition"
+              onClick={submitReview}
+              disabled={!canReview}
+              className={`w-full py-2.5 text-sm font-semibold rounded-xl transition ${canReview
+                ? mealCompleted
+                  ? 'bg-emerald-700 hover:bg-emerald-800 text-white'
+                  : 'bg-gray-900 hover:bg-gray-800 text-white'
+                : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                }`}
             >
-              Skip review — exit table
+              {mealCompleted ? 'Submit review & exit' : 'Submit review'}
             </button>
-          )}
+            {mealCompleted && (
+              <button
+                type="button"
+                onClick={() => { clearCustomerSession(); navigate('/tables', { replace: true }) }}
+                className="w-full py-2 text-sm text-emerald-800 hover:text-emerald-900 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition"
+              >
+                Skip review — exit table
+              </button>
+            )}
+          </div>
         </div>
-      </div>
-
-      <button onClick={exitTable} className="mt-6 text-sm text-gray-500 hover:text-gray-800">
-        Back to Welcome
-      </button>
+      )}
 
       {completeConfirmOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">

@@ -317,17 +317,18 @@ export default function CustomerMenu() {
               </p>
             )}
           </div>
-          <button
-            type="button"
-            onClick={openOrderView}
-            className="relative w-9 h-9 rounded-full border border-gray-300 bg-white text-sm flex items-center justify-center"
-            aria-label="View current orders"
-          >
-            🧾
-            {hasActiveOrders && (
-              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white" />
-            )}
-          </button>
+          {hasActiveOrders ? (
+            <button
+              type="button"
+              onClick={openOrderView}
+              className="inline-flex items-center gap-2 rounded-full border border-emerald-500 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-900 shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-gray-400"
+              aria-label="View current orders"
+            >
+              <span className="text-base">🧾</span>
+              <span>Current orders</span>
+              <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+            </button>
+          ) : null}
         </div>
 
         <div>
@@ -752,20 +753,34 @@ export default function CustomerMenu() {
         </div>
       )}
 
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-5xl bg-white border border-gray-200 rounded-2xl px-3 sm:px-4 py-2.5 shadow-lg">
-        <div className="flex items-center justify-between gap-2">
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-5xl bg-white border border-gray-200 rounded-2xl px-3 sm:px-4 py-3 shadow-lg">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <p className="text-xs text-gray-500">Items: {selectedDishIds.length}</p>
             <p className="text-sm font-semibold text-gray-900 truncate">Total: Rs {Math.round(cartTotal)}</p>
           </div>
-          <button
-            type="button"
-            onClick={() => selectedDishIds.length && setCheckoutConfirmOpen(true)}
-            disabled={ordering || selectedDishIds.length === 0}
-            className="px-4 py-2 text-sm bg-gray-900 text-white rounded-xl disabled:opacity-50 whitespace-nowrap"
-          >
-            Confirm order
-          </button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            {hasActiveOrders ? (
+              <button
+                type="button"
+                onClick={openOrderView}
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-500 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-900 shadow-sm transition-all hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-gray-400"
+                aria-label="View current orders"
+              >
+                <span className="text-base">🧾</span>
+                <span>View active orders</span>
+                <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => selectedDishIds.length && setCheckoutConfirmOpen(true)}
+              disabled={ordering || selectedDishIds.length === 0}
+              className="inline-flex items-center justify-center rounded-full bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:opacity-50 whitespace-nowrap"
+            >
+              Confirm order
+            </button>
+          </div>
         </div>
       </div>
     </CustomerLayout>

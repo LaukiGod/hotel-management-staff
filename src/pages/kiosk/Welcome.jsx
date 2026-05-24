@@ -17,7 +17,6 @@ const STATS = [
   { val: '3', label: 'Order States', color: 'var(--text-secondary)' },
   { val: 'RT', label: 'Real-time', color: 'var(--ember)' },
 ]
-const RESUME_DELAY_MS = 1500
 
 function Logo({ size = 38 }) {
   return (
@@ -42,12 +41,11 @@ export default function KioskWelcome() {
   const { tableNo, user, orderId, kioskPath } = useKioskSession()
   const [imgIndex, setImgIndex] = useState(0)
   const [loaded, setLoaded] = useState(false)
-  const idleTimer = useRef(null)
   /** When true, skip resuming to a deeper step (user explicitly chose to view welcome). */
   const stayOnWelcomeRef = useRef(false)
   /**
-   * Computed once on mount: the path to resume to (customer session or kiosk session).
-   * Stored in a ref so the idle timer and proceed() can check it without stale closures.
+   * Resume path for the active session (customer or kiosk).
+   * Set on mount/update — navigation only fires on explicit tap.
    */
   const resumePathRef = useRef(null)
 
@@ -73,45 +71,18 @@ export default function KioskWelcome() {
     if (stayOnWelcomeRef.current) {
       return
     }
+    // Compute the resume path and store it — but do NOT auto-redirect.
+    // Navigation only happens when the user explicitly taps (see proceed()).
     const p = getCombinedResumePath({ tableNo, user, orderId, kioskPath })
     resumePathRef.current = p
-    if (p) {
-      const t = setTimeout(() => {
-        navigate(p, { replace: true })
-      }, RESUME_DELAY_MS)
-      return () => clearTimeout(t)
-    }
   }, [navigate, tableNo, user, orderId, kioskPath, location.state])
 
-  useEffect(() => {
-    function goTables() {
-      // Only clear the customer session and start a new kiosk flow if there is
-      // no active session waiting to be resumed. If a resume path exists, the
-      // auto-redirect above will handle navigation — don't interfere.
-      if (resumePathRef.current) return
-      onKioskFlowExplicitStart()
-      navigate('/tables')
-    }
-    function resetIdle() {
-      if (idleTimer.current) clearTimeout(idleTimer.current)
-      idleTimer.current = setTimeout(goTables, 30_000)
-    }
-    resetIdle()
-    window.addEventListener('pointerdown', resetIdle)
-    window.addEventListener('pointermove', resetIdle)
-    window.addEventListener('keydown', resetIdle)
-    return () => {
-      if (idleTimer.current) clearTimeout(idleTimer.current)
-      window.removeEventListener('pointerdown', resetIdle)
-      window.removeEventListener('pointermove', resetIdle)
-      window.removeEventListener('keydown', resetIdle)
-    }
-  }, [navigate])
-
   function proceed() {
-    // If there is an active session to resume, a tap should not start a brand-new
-    // kiosk flow (which would clear the customer session). Let the auto-redirect fire.
-    if (resumePathRef.current) return
+    if (resumePathRef.current) {
+      // Active session — resume to the correct page on tap
+      navigate(resumePathRef.current, { replace: true })
+      return
+    }
     stayOnWelcomeRef.current = false
     onKioskFlowExplicitStart()
     navigate('/tables')

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { useNavigate } from 'react-router-dom'
+
 import { kioskAxios } from '../../api/kioskAxios'
 import KioskShell from '../../components/KioskShell'
 import KioskBackButton from '../../components/KioskBackButton'
 import { useKioskSession } from '../../context/KioskSessionContext'
 import { usePopup } from '../../context/PopupContext'
+import { useTenantNavigate } from '../../context/TenantContext'
 
 const UNCATEGORIZED = 'Other'
 
@@ -30,7 +31,7 @@ function groupByCategory(dishes) {
 }
 
 export default function KioskMenu() {
-  const navigate = useNavigate()
+  const navigate = useTenantNavigate()
   const { tableNo, user, cart, setQty, allergies, setAllergies, setOrderId } = useKioskSession()
   const notify = usePopup()
   const [dishes, setDishes] = useState([])

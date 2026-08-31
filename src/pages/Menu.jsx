@@ -3,9 +3,10 @@ import { api } from '../api/client'
 import AdminPanelHeader from '../components/AdminPanelHeader'
 import { usePopup } from '../context/PopupContext'
 import ConfirmDialog from '../components/ConfirmDialog'
+import { tenantKey } from '../utils/tenantStorage'
 
 const EMPTY_FORM = { name: '', price: '', ingredients: '', recipe: '', imageUrl: '', category: '', isAvailable: true }
-const FILTERS_KEY = 'adminMenuFilters:v1'
+const FILTERS_KEY_BASE = 'adminMenuFilters:v1'
 
 function safeParse(json) {
   try {
@@ -16,7 +17,7 @@ function safeParse(json) {
 }
 
 function loadInitialFilters() {
-  const raw = localStorage.getItem(FILTERS_KEY)
+  const raw = localStorage.getItem(tenantKey(FILTERS_KEY_BASE))
   const parsed = raw ? safeParse(raw) : null
   return parsed && typeof parsed === 'object'
     ? {
@@ -42,7 +43,7 @@ export default function Menu() {
   useEffect(() => { load() }, [])
 
   useEffect(() => {
-    localStorage.setItem(FILTERS_KEY, JSON.stringify(filters))
+    localStorage.setItem(tenantKey(FILTERS_KEY_BASE), JSON.stringify(filters))
   }, [filters])
 
   async function load() {

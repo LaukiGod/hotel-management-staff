@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+
 import { motion } from 'framer-motion'
 import { kioskAxios } from '../../api/kioskAxios'
 import KioskShell from '../../components/KioskShell'
 import { useKioskSession } from '../../context/KioskSessionContext'
 import { usePopup } from '../../context/PopupContext'
+import { useTenantNavigate } from '../../context/TenantContext'
 
 export default function KioskOrderSuccess() {
-  const navigate = useNavigate()
+  const navigate = useTenantNavigate()
   const { tableNo, cart, orderId, resetSession } = useKioskSession()
   const notify = usePopup()
   const [rating, setRating] = useState(0)

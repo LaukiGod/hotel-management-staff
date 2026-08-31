@@ -1,7 +1,10 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { KIOSK_SESSION_CLEARED_EVENT } from '../utils/sessionCoordination'
+import { KIOSK_SESSION_CLEARED_EVENT, KIOSK_SESSION_STORAGE_KEY } from '../utils/sessionCoordination'
+import { tenantKey } from '../utils/tenantStorage'
 
-const STORAGE_KEY = 'smart-restaurant-kiosk-session-v1'
+// Namespaced per restaurant: one tablet may serve as a kiosk for more than one
+// tenant, and their carts/sessions must never mix.
+const storageKey = () => tenantKey(KIOSK_SESSION_STORAGE_KEY)
 
 function safeParse(json) {
   try {
@@ -12,7 +15,7 @@ function safeParse(json) {
 }
 
 function loadInitial() {
-  const raw = localStorage.getItem(STORAGE_KEY)
+  const raw = localStorage.getItem(storageKey())
   const parsed = raw ? safeParse(raw) : null
   return parsed && typeof parsed === 'object'
     ? {
@@ -59,7 +62,7 @@ export function KioskSessionProvider({ children }) {
   function persist(updater) {
     setState((prev) => {
       const next = typeof updater === 'function' ? updater(prev) : updater
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+      localStorage.setItem(storageKey(), JSON.stringify(next))
       return next
     })
   }
@@ -114,7 +117,7 @@ export function KioskSessionProvider({ children }) {
 
     function resetSession() {
       setState({ ...EMPTY_KIOSK_STATE })
-      localStorage.removeItem(STORAGE_KEY)
+      localStorage.removeItem(storageKey())
     }
 
     function resetForTableChange() {

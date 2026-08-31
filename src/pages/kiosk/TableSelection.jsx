@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+
 import { AnimatePresence, motion } from 'framer-motion'
 import { kioskAxios } from '../../api/kioskAxios'
 import KioskShell from '../../components/KioskShell'
 import { useKioskSession } from '../../context/KioskSessionContext'
+import { useTenantNavigate } from '../../context/TenantContext'
 
 const STATUS_STYLES = {
   available: 'bg-emerald-50 text-emerald-900 border-emerald-200',
@@ -19,7 +20,7 @@ function statusLabel(s) {
 }
 
 export default function KioskTableSelection() {
-  const navigate = useNavigate()
+  const navigate = useTenantNavigate()
   const { resetSession } = useKioskSession()
   const [tables, setTables] = useState([])
   const [loading, setLoading] = useState(true)

@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { kioskAxios } from '../../api/kioskAxios'
 import KioskShell from '../../components/KioskShell'
 import { useKioskSession } from '../../context/KioskSessionContext'
+import { useTenantNavigate } from '../../context/TenantContext'
 
 const PRESET_ALLERGIES = ['nuts', 'gluten', 'dairy', 'shellfish', 'eggs', 'soy', 'sesame']
 
 export default function KioskRegister() {
-  const navigate = useNavigate()
+  const navigate = useTenantNavigate()
   const location = useLocation()
   const { tableNo, user, allergies: sessionAllergies, detailsDraft, setUser, setAllergies, setDetailsDraft, resetForTableChange } = useKioskSession()
   const [name, setName] = useState(() => String(user?.name || detailsDraft?.name || ''))

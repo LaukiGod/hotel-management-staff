@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../../api/client'
 import { onCustomerFlowEnter } from '../../utils/sessionCoordination'
 import { clearCustomerSession, getCustomerSession } from './customerSession'
@@ -59,12 +58,14 @@ function WaiterFAB({ onClick, loading }) {
 
 /* ─── Layout ──────────────────────────────────────────────────────── */
 import { usePopup } from '../../context/PopupContext'
+import { useTenantNavigate, useTenantRelativePath } from '../../context/TenantContext'
 
 export default function CustomerLayout({ title, children }) {
-  const navigate = useNavigate()
-  const location = useLocation()
+  const navigate = useTenantNavigate()
+  // Tenant-relative — the real path is /r/:slug/customer/track, not /customer/track.
+  const pathname = useTenantRelativePath()
   const session = getCustomerSession()
-  const onTrack = location.pathname === '/customer/track'
+  const onTrack = pathname === '/customer/track'
 
   const [loading, setLoading] = useState(false)
   const [toastVisible, setToastVisible] = useState(false)

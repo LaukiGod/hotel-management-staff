@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { api } from '../../api/client'
 import { useCustomerVerifySession } from '../../hooks/useCustomerVerifySession'
 import CustomerLayout from './CustomerLayout'
 import { normalizedLines } from './customerOrderUtils'
 import { getCustomerSession, isQuickBrowseSession, setCustomerSession, setQuickBrowseSession } from './customerSession'
 import { usePopup } from '../../context/PopupContext'
+import { useTenantNavigate } from '../../context/TenantContext'
 
 const UNCATEGORIZED = 'Other'
 
@@ -34,7 +35,7 @@ function isDishAvailable(dish) {
 }
 
 export default function CustomerMenu() {
-  const navigate = useNavigate()
+  const navigate = useTenantNavigate()
   const notify = usePopup()
   const [searchParams] = useSearchParams()
   const [sessionRev, setSessionRev] = useState(0)

@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { kioskAxios } from '../../api/kioskAxios'
 import KioskShell from '../../components/KioskShell'
 import { usePopup } from '../../context/PopupContext'
+import { useTenantNavigate } from '../../context/TenantContext'
 
 export default function KioskOrderFeedback() {
-  const navigate = useNavigate()
+  const navigate = useTenantNavigate()
   const location = useLocation()
   const notify = usePopup()
   const orderId = location.state?.orderId

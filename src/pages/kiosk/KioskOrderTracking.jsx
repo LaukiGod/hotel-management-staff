@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+
 import { kioskAxios } from '../../api/kioskAxios'
 import KioskShell from '../../components/KioskShell'
 import { useKioskSession } from '../../context/KioskSessionContext'
+import { useTenantNavigate } from '../../context/TenantContext'
 
 const POLL_MS = 3000
 
@@ -29,7 +30,7 @@ function normalizedLines(order) {
 }
 
 export default function KioskOrderTracking() {
-  const navigate = useNavigate()
+  const navigate = useTenantNavigate()
   const { tableNo, user, orderId, resetSession } = useKioskSession()
   const [order, setOrder] = useState(null)
   const [error, setError] = useState('')

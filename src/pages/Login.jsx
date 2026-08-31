@@ -1,21 +1,25 @@
 import { useAuth } from '../context/AuthContext'
 import { Navigate } from 'react-router-dom'
-import { API_BASE_URL } from '../config/api'
+import { oauthStartUrl } from '../config/api'
+import { useTenant } from '../context/TenantContext'
 
 export default function Login() {
   const { token } = useAuth()
+  const { slug, restaurant } = useTenant()
 
-  if (token) return <Navigate to="/admin/dashboard" replace />
+  if (token) return <Navigate to={`/r/${slug}/admin/dashboard`} replace />
 
   function handleGoogleLogin() {
-    window.location.href = `${API_BASE_URL}/auth/google`
+    // Carries this restaurant's slug through OAuth, so the callback knows which
+    // tenant's staff list to check the Google account against.
+    window.location.href = oauthStartUrl(slug)
   }
 
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center">
       <div className="bg-white rounded-2xl shadow-xl p-10 w-full max-w-sm text-center">
         <div className="mb-6">
-          <p className="text-3xl font-bold text-gray-900">Restaurant</p>
+          <p className="text-3xl font-bold text-gray-900">{restaurant?.name || 'Restaurant'}</p>
           <p className="text-gray-400 text-sm mt-1">Staff & Admin Portal</p>
         </div>
         <button

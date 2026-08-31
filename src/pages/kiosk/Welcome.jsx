@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import KioskShell from '../../components/KioskShell'
 import { useKioskSession } from '../../context/KioskSessionContext'
 import { getCombinedResumePath, onKioskFlowExplicitStart } from '../../utils/sessionCoordination'
 import styles from './KioskWelcome.module.css'
+import { useTenantNavigate, useTenant } from '../../context/TenantContext'
 
 const FOOD_IMAGES = [
   'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1600&q=85',
@@ -36,7 +37,7 @@ function Logo({ size = 38 }) {
 }
 
 export default function KioskWelcome() {
-  const navigate = useNavigate()
+  const navigate = useTenantNavigate()
   const location = useLocation()
   const { tableNo, user, orderId, kioskPath } = useKioskSession()
   const [imgIndex, setImgIndex] = useState(0)
@@ -49,8 +50,11 @@ export default function KioskWelcome() {
    */
   const resumePathRef = useRef(null)
 
-  const restaurantName = import.meta.env.VITE_RESTAURANT_NAME || 'Smart Restaurant'
-  const restaurantTagline = import.meta.env.VITE_RESTAURANT_TAGLINE || 'AI-powered ordering with real-time allergy detection. Frictionless from your table to the kitchen.'
+  // Each restaurant is a separate tenant — the welcome screen must show THIS
+  // one's name, not a single name shared by every restaurant on the platform.
+  const { restaurant } = useTenant()
+  const restaurantName = restaurant?.name || 'Smart Restaurant'
+  const restaurantTagline = 'AI-powered ordering with real-time allergy detection. Frictionless from your table to the kitchen.'
 
   useEffect(() => {
     const t1 = setTimeout(() => setLoaded(true), 60)

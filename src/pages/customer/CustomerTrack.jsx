@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+
 import { api } from '../../api/client'
 import { useCustomerVerifySession } from '../../hooks/useCustomerVerifySession'
 import CustomerLayout from './CustomerLayout'
 import { normalizedLines } from './customerOrderUtils'
 import { clearCustomerSession, getCustomerSession } from './customerSession'
 import { usePopup } from '../../context/PopupContext'
+import { useTenantNavigate } from '../../context/TenantContext'
 
 const LINE_LABELS = {
   queued: { label: 'Received', className: 'bg-gray-100 text-gray-800' },
@@ -16,7 +17,7 @@ const LINE_LABELS = {
 }
 
 export default function CustomerTrack() {
-  const navigate = useNavigate()
+  const navigate = useTenantNavigate()
   const notify = usePopup()
   useCustomerVerifySession()
   const session = getCustomerSession()

@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
-import { api } from '../api/client'
+import { api, tenantUrl, getToken } from '../api/client'
 import StatusBadge from '../components/StatusBadge'
 import AllergyBadge from '../components/AllergyBadge'
 import AdminPanelHeader from '../components/AdminPanelHeader'
 import { useAuth } from '../context/AuthContext'
-import { API_BASE_URL } from '../config/api'
 import { usePopup } from '../context/PopupContext'
 
 // QR icon inline — no extra dep
@@ -126,9 +125,8 @@ export default function Tables() {
     setQrLoading(true)
     setQrError('')
     try {
-      const token = sessionStorage.getItem('token')
-      const response = await fetch(`${API_BASE_URL}/restaurant/tables/${tableNo}/qrcode`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const response = await fetch(tenantUrl(`/restaurant/tables/${tableNo}/qrcode`), {
+        headers: { Authorization: `Bearer ${getToken()}` },
       })
       if (!response.ok) throw new Error('Failed to generate QR code')
       const blob = await response.blob()

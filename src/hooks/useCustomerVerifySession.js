@@ -1,19 +1,20 @@
 import { useEffect } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import { clearCustomerSession, getCustomerSession, isQuickBrowseSession, setCustomerResumePath } from '../pages/customer/customerSession'
 import { sessionMatchesTableUser } from '../pages/customer/customerOrderUtils'
+import { useTenantNavigate, useTenantRelativePath } from '../context/TenantContext'
 
 /**
  * On customer pages (except login): ensure local session matches the table's seated user,
  * then persist the current path so refresh restores menu vs tracking.
  */
 export function useCustomerVerifySession() {
-  const navigate = useNavigate()
-  const location = useLocation()
+  const navigate = useTenantNavigate()
+  // Tenant-relative — the browser's actual path is /r/:slug/customer/..., and
+  // this hook's route checks are written against the bare /customer/... shape.
+  const pathname = useTenantRelativePath()
 
   useEffect(() => {
-    const pathname = location.pathname
     if (!pathname.startsWith('/customer/') || pathname === '/customer/login') return
 
     let cancelled = false
@@ -69,5 +70,5 @@ export function useCustomerVerifySession() {
     return () => {
       cancelled = true
     }
-  }, [navigate, location.pathname])
+  }, [navigate, pathname])
 }

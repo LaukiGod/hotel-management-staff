@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { api } from '../../api/client'
 import { clearCustomerSession, getCustomerSession, isQuickBrowseSession, setCustomerSession } from './customerSession'
 import { sessionMatchesTableUser, tableHasOpenCustomerTicket } from './customerOrderUtils'
 import { usePopup } from '../../context/PopupContext'
+import { useTenantNavigate } from '../../context/TenantContext'
 
 export default function CustomerLogin() {
-  const navigate = useNavigate()
+  const navigate = useTenantNavigate()
   const notify = usePopup()
   const [searchParams] = useSearchParams()
   const tableIdFromQR = searchParams.get('tableId') || ''

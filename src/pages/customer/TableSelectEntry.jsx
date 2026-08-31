@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { api } from '../../api/client'
 import { onCustomerFlowEnter } from '../../utils/sessionCoordination'
+import { useTenantNavigate } from '../../context/TenantContext'
 
 export default function TableSelectEntry() {
-  const navigate = useNavigate()
+  const navigate = useTenantNavigate()
   const { tableId } = useParams()
   const [error, setError] = useState('')
 

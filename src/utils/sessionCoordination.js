@@ -11,6 +11,7 @@
 
 import { getCustomerSession, clearCustomerSession, isQuickBrowseSession } from '../pages/customer/customerSession'
 import { getKioskResumePath } from './kioskResumePath'
+import { removeKey } from './tenantStorage'
 
 export const KIOSK_SESSION_STORAGE_KEY = 'smart-restaurant-kiosk-session-v1'
 
@@ -35,11 +36,7 @@ export function getCombinedResumePath(kioskSnapshot) {
 
 /** Remove kiosk localStorage and notify KioskSessionProvider to reset in-memory state. */
 export function clearKioskStorageAndNotify() {
-  try {
-    localStorage.removeItem(KIOSK_SESSION_STORAGE_KEY)
-  } catch {
-    // ignore
-  }
+  removeKey(KIOSK_SESSION_STORAGE_KEY)
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent(CLEAR_KIOSK_EVENT))
   }

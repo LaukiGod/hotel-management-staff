@@ -1,18 +1,18 @@
-export const CUSTOMER_SESSION_KEY = 'customerSession'
+import { readJSON, writeJSON, removeKey, tenantKey } from '../../utils/tenantStorage'
+
+const CUSTOMER_SESSION_BASE = 'customerSession'
+
+/** Per-restaurant storage key — see utils/tenantStorage. */
+export const customerSessionKey = () => tenantKey(CUSTOMER_SESSION_BASE)
 
 const RESUMABLE_PATHS = new Set(['/customer/menu', '/customer/track'])
 
 export function getCustomerSession() {
-  try {
-    const raw = localStorage.getItem(CUSTOMER_SESSION_KEY)
-    return raw ? JSON.parse(raw) : null
-  } catch {
-    return null
-  }
+  return readJSON(CUSTOMER_SESSION_BASE, null)
 }
 
 export function setCustomerSession(session) {
-  localStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(session))
+  writeJSON(CUSTOMER_SESSION_BASE, session)
 }
 
 export function patchCustomerSession(partial) {
@@ -28,7 +28,7 @@ export function setCustomerResumePath(path) {
 }
 
 export function clearCustomerSession() {
-  localStorage.removeItem(CUSTOMER_SESSION_KEY)
+  removeKey(CUSTOMER_SESSION_BASE)
 }
 
 /** Browse-first: table chosen via GET / quick link; name/phone collected at order confirm. */

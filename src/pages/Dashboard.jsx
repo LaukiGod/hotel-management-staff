@@ -51,6 +51,7 @@ export default function Dashboard() {
         title="Dashboard"
         subtitle="Here's what's happening right now."
         actionLabel="Refresh"
+        actionIcon="refresh"
         onAction={load}
         actionDisabled={loading}
       />

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { api } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import { useAdminLayout } from '../context/AdminLayoutContext'
 
@@ -7,7 +8,7 @@ const navItems = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: 'dashboard' },
   { to: '/admin/tables', label: 'Tables', icon: 'tables' },
   { to: '/admin/orders', label: 'Orders', icon: 'orders' },
-  { to: '/admin/alerts', label: 'Allergy Alerts', icon: 'alerts' },
+  { to: '/admin/alerts', label: 'Allergy Alerts', icon: 'alerts', badgeKey: 'allergyAlerts' },
   { to: '/admin/inventory', label: 'Inventory', icon: 'inventory' },
 ]
 
@@ -67,6 +68,15 @@ function NavIcon({ name }) {
   }
 }
 
+function NavBadge({ count }) {
+  if (!count) return null
+  return (
+    <span className="ml-auto shrink-0 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+      {count > 99 ? '99+' : count}
+    </span>
+  )
+}
+
 function itemClass(collapsed) {
   return function navItemClassName({ isActive }) {
     return [
@@ -91,10 +101,27 @@ export default function Navbar() {
   } = useAdminLayout()
   const [isResizing, setIsResizing] = useState(false)
   const resizeRef = useRef({ startX: 0, startW: 0 })
+  const [notifCounts, setNotifCounts] = useState({})
 
   useEffect(() => {
     setMobileNavOpen(false)
   }, [location.pathname, setMobileNavOpen])
+
+  useEffect(() => {
+    if (!user) return
+    let mounted = true
+    async function poll() {
+      try {
+        const data = await api.get('/restaurant/notifications')
+        if (mounted) setNotifCounts(data || {})
+      } catch {
+        // silent — passive background poll, avoid toast spam
+      }
+    }
+    poll()
+    const interval = setInterval(poll, 8000)
+    return () => { mounted = false; clearInterval(interval) }
+  }, [user])
 
   function handleLogout() {
     logout()
@@ -163,10 +190,11 @@ export default function Navbar() {
           </button>
         </div>
         <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain px-3 py-4">
-          {navItems.map(({ to, label, icon }) => (
+          {navItems.map(({ to, label, icon, badgeKey }) => (
             <NavLink key={to} to={to} onClick={() => setMobileNavOpen(false)} className={itemClass(false)}>
               <NavIcon name={icon} />
               <span className="truncate">{label}</span>
+              {badgeKey ? <NavBadge count={notifCounts[badgeKey]} /> : null}
             </NavLink>
           ))}
           {user?.role === 'ADMIN' && (
@@ -265,7 +293,7 @@ export default function Navbar() {
         </div>
 
         <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden px-2 py-3">
-          {navItems.map(({ to, label, icon }) => (
+          {navItems.map(({ to, label, icon, badgeKey }) => (
             <NavLink
               key={to}
               to={to}
@@ -275,6 +303,7 @@ export default function Navbar() {
             >
               <NavIcon name={icon} />
               {!sidebarCollapsed && <span className="truncate">{label}</span>}
+              {badgeKey && !sidebarCollapsed ? <NavBadge count={notifCounts[badgeKey]} /> : null}
             </NavLink>
           ))}
           {user?.role === 'ADMIN' && (

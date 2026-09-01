@@ -63,6 +63,7 @@ import { usePopup } from '../../context/PopupContext'
 export default function CustomerLayout({ title, children }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const notify = usePopup()
   const session = getCustomerSession()
   const onTrack = location.pathname === '/customer/track'
 
@@ -81,7 +82,7 @@ export default function CustomerLayout({ title, children }) {
       setToastVisible(true)
       setTimeout(() => setToastVisible(false), 3000)
     } catch (e) {
-      alert(e.message)
+      notify.error(e.message)
     } finally {
       setLoading(false)
     }

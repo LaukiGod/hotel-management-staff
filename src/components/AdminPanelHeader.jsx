@@ -1,3 +1,29 @@
+function PlusIcon() {
+  return (
+    <span className="text-base leading-none" aria-hidden>
+      +
+    </span>
+  )
+}
+
+function RefreshIcon() {
+  return (
+    <svg
+      className="h-4 w-4"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+      <path d="M21 4v5h-5" />
+    </svg>
+  )
+}
+
 /**
  * Sticky top bar for admin / staff pages: title, optional primary action, optional badge.
  */
@@ -6,6 +32,7 @@ export default function AdminPanelHeader({
   subtitle,
   badge,
   actionLabel,
+  actionIcon = 'add',
   onAction,
   actionDisabled,
   children,
@@ -32,9 +59,7 @@ export default function AdminPanelHeader({
               disabled={actionDisabled}
               className="inline-flex w-full min-w-0 items-center justify-center gap-1.5 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-800 active:bg-gray-900 disabled:opacity-50 sm:w-auto"
             >
-              <span className="text-base leading-none" aria-hidden>
-                +
-              </span>
+              {actionIcon === 'refresh' ? <RefreshIcon /> : <PlusIcon />}
               {actionLabel}
             </button>
           ) : null}

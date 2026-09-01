@@ -189,7 +189,7 @@ export default function CustomerMenu() {
   function changeQty(dish, delta) {
     if (!dish?._id) return
     if (!isDishAvailable(dish)) {
-      if (delta > 0) notify.info(`${dish.name || 'This dish'} is currently unavailable.`)
+      if (delta > 0) notify.info(`${dish.name || 'This dish'} is out of stock.`)
       return
     }
     const dishId = dish._id
@@ -450,7 +450,7 @@ export default function CustomerMenu() {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-gray-900 truncate">{dish.name}</p>
                             {unavailable ? (
-                              <p className="text-[11px] font-semibold text-amber-700 mt-0.5">Currently unavailable</p>
+                              <p className="text-[11px] font-semibold text-amber-700 mt-0.5">Out of stock</p>
                             ) : null}
                             <p className="text-xs text-gray-500 line-clamp-2 mt-0.5">{dish.recipe || 'Freshly prepared'}</p>
                             <div className="mt-2 flex items-center justify-between gap-2">
@@ -718,7 +718,7 @@ export default function CustomerMenu() {
               </div>
               <p className="text-sm text-gray-600 mt-3">{selectedDish.recipe || 'Freshly prepared for your table.'}</p>
               {!isDishAvailable(selectedDish) ? (
-                <p className="text-xs font-semibold text-amber-700 mt-2">This dish is currently unavailable</p>
+                <p className="text-xs font-semibold text-amber-700 mt-2">This dish is out of stock</p>
               ) : null}
               {selectedDish.ingredients?.length ? (
                 <p className="text-xs text-gray-500 mt-2">Ingredients: {selectedDish.ingredients.join(', ')}</p>
@@ -798,7 +798,7 @@ function DishRowCard({ dish, cart, onOpen, onChangeQty }) {
           <div className="w-full h-24 rounded-xl bg-gray-100 flex items-center justify-center text-[10px] text-gray-500">No image</div>
         )}
         <p className="mt-2 text-xs font-semibold text-gray-900 line-clamp-2">{dish.name}</p>
-        {unavailable ? <p className="text-[10px] font-semibold text-amber-700 mt-0.5">Unavailable</p> : null}
+        {unavailable ? <p className="text-[10px] font-semibold text-amber-700 mt-0.5">Out of stock</p> : null}
         <p className="text-xs text-gray-500">Rs {dish.price}</p>
       </button>
       <div className="mt-2 flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>

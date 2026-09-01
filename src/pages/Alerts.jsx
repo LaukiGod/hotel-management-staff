@@ -36,6 +36,7 @@ export default function Alerts() {
       <AdminPanelHeader
         title="Allergy alerts"
         actionLabel="Refresh"
+        actionIcon="refresh"
         onAction={() => fetchAlerts({ silent: false })}
         actionDisabled={loading}
       />

@@ -12,14 +12,13 @@ export default function TableSelectEntry() {
     let cancelled = false
 
     async function bookAndRedirect() {
-      const n = Number(tableId)
-      if (!Number.isFinite(n) || n <= 0) {
+      if (!tableId) {
         if (!cancelled) setError('Invalid table id')
         return
       }
       try {
-        const result = await api.get(`/user/table-select/${n}`)
-        const target = result?.entryPath || `/customer/menu?tableId=${n}&flow=quick`
+        const result = await api.get(`/user/table-select/${tableId}`)
+        const target = result?.entryPath || `/customer/menu?tableId=${result?.tableNo}&flow=quick`
         if (!cancelled) {
           onCustomerFlowEnter()
           navigate(target, { replace: true })

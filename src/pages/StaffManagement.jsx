@@ -55,6 +55,7 @@ export default function StaffManagement() {
     try {
       await api.post('/auth/staff', form)
       setShowForm(false)
+      notify.success(`${form.name} added as ${form.role.toLowerCase()}.`)
       setForm(EMPTY_FORM)
       await load()
     } catch (e) {
@@ -74,6 +75,7 @@ export default function StaffManagement() {
       const action = member.isActive ? 'deactivate' : 'activate'
       await api.patch(`/auth/staff/${member._id}/${action}`)
       setStaff(prev => prev.map(s => s._id === member._id ? { ...s, isActive: !s.isActive } : s))
+      notify.success(`${member.name} ${action}d.`)
     } catch (e) {
       notify.error(e.message)
     } finally {
@@ -96,6 +98,7 @@ export default function StaffManagement() {
     try {
       await api.delete(`/auth/staff/${deleteId}`)
       setStaff((prev) => prev.filter((s) => s._id !== deleteId))
+      notify.success(`${deleteName} deleted.`)
     } catch (e) {
       notify.error(e.message)
     } finally {

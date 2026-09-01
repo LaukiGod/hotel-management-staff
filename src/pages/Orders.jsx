@@ -80,11 +80,16 @@ export default function Orders() {
   async function handleStatusChange(orderId, status) {
     setUpdating(orderId)
     try {
-      await api.post('/restaurant/order-status', { orderId, status })
-      setOrders(prev =>
-        prev.map(o => (o._id === orderId ? { ...o, status } : o))
-      )
-      setSelected((prev) => (prev?._id === orderId ? { ...prev, status } : prev))
+      const res = await api.post('/restaurant/order-status', { orderId, status })
+      const updated = res?.order
+      if (updated?._id) {
+        setOrders((prev) => prev.map((o) => (o._id === updated._id ? updated : o)))
+        setSelected((prev) => (prev?._id === updated._id ? updated : prev))
+      } else {
+        setOrders(prev => prev.map(o => (o._id === orderId ? { ...o, status } : o)))
+        setSelected((prev) => (prev?._id === orderId ? { ...prev, status } : prev))
+      }
+      notify.success(`Order status updated to "${status}".`)
     } catch (e) {
       notify.error(e.message)
     } finally {
@@ -101,6 +106,7 @@ export default function Orders() {
         setOrders((prev) => prev.map((o) => (o._id === updated._id ? updated : o)))
         setSelected((prev) => (prev?._id === updated._id ? updated : prev))
       }
+      notify.success(`Item status updated to "${status}".`)
     } catch (e) {
       notify.error(e.message)
     } finally {
@@ -276,6 +282,7 @@ export default function Orders() {
         setOrders(refreshed)
       }
       setAddOpen(false)
+      notify.success('Order created.')
     } catch (e) {
       setCreateError(e.message)
     } finally {

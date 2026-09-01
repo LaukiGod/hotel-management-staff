@@ -85,6 +85,8 @@ export default function Inventory() {
       if (Number.isNaN(quantity) || Number.isNaN(lowStockThreshold)) {
         throw new Error('Quantity and low stock threshold must be valid numbers')
       }
+      if (quantity < 0) throw new Error('Quantity cannot be negative')
+      if (lowStockThreshold < 0) throw new Error('Low stock threshold cannot be negative')
 
       const payload = {
         ...form,
@@ -96,9 +98,11 @@ export default function Inventory() {
       if (editId) {
         await api.put(`/restaurant/inventory/${editId}`, payload)
         await load()
+        notify.success(`${trimmedName} updated.`)
       } else {
         await api.post('/restaurant/add-inventory', payload)
         await load()
+        notify.success(`${trimmedName} added to inventory.`)
       }
       setShowForm(false)
     } catch (e) {
@@ -118,6 +122,7 @@ export default function Inventory() {
     try {
       await api.delete(`/restaurant/inventory/${deleteId}`)
       setItems((prev) => prev.filter((i) => i._id !== deleteId))
+      notify.success('Item deleted.')
     } catch (e) {
       notify.error(e.message)
     } finally {
@@ -132,6 +137,7 @@ export default function Inventory() {
         <AdminPanelHeader
           title="Inventory"
           actionLabel={isAdmin ? 'Add item' : 'Refresh'}
+          actionIcon={isAdmin ? 'add' : 'refresh'}
           onAction={isAdmin ? openAdd : load}
         />
         <p className="p-4 text-red-500 sm:p-6">{error}</p>
@@ -144,6 +150,7 @@ export default function Inventory() {
       <AdminPanelHeader
         title="Inventory"
         actionLabel={isAdmin ? 'Add item' : 'Refresh'}
+        actionIcon={isAdmin ? 'add' : 'refresh'}
         onAction={isAdmin ? openAdd : load}
         actionDisabled={loading}
       />
@@ -204,11 +211,11 @@ export default function Inventory() {
             <div className="space-y-3">
               <Input label="Name" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} />
               <div className="grid grid-cols-2 gap-3">
-                <Input label="Quantity" type="number" value={form.quantity} onChange={v => setForm(f => ({ ...f, quantity: v }))} />
+                <Input label="Quantity" type="number" min="0" value={form.quantity} onChange={v => setForm(f => ({ ...f, quantity: v }))} />
                 <Select label="Unit" value={form.unit} options={UNITS} onChange={v => setForm(f => ({ ...f, unit: v }))} />
               </div>
               <Select label="Category" value={form.category} options={CATEGORIES} onChange={v => setForm(f => ({ ...f, category: v }))} />
-              <Input label="Low Stock Threshold" type="number" value={form.lowStockThreshold} onChange={v => setForm(f => ({ ...f, lowStockThreshold: v }))} />
+              <Input label="Low Stock Threshold" type="number" min="0" value={form.lowStockThreshold} onChange={v => setForm(f => ({ ...f, lowStockThreshold: v }))} />
               <Input label="Expiry Date (optional)" type="date" value={form.expiryDate} onChange={v => setForm(f => ({ ...f, expiryDate: v }))} />
             </div>
             <div className="flex gap-3 mt-6">
@@ -240,12 +247,13 @@ export default function Inventory() {
   )
 }
 
-function Input({ label, value, onChange, type = 'text' }) {
+function Input({ label, value, onChange, type = 'text', min }) {
   return (
     <div>
       <label className="block text-xs text-gray-500 mb-1">{label}</label>
       <input
         type={type}
+        min={min}
         value={value}
         onChange={e => onChange(e.target.value)}
         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"

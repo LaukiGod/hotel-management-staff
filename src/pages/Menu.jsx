@@ -94,8 +94,10 @@ export default function Menu() {
       }
       if (editDishId !== null) {
         await api.put('/restaurant/update-dish', { dishId: editDishId, ...payload })
+        notify.success(`${payload.name} updated.`)
       } else {
         await api.post('/restaurant/add-dish', payload)
+        notify.success(`${payload.name} added to menu.`)
       }
       setShowForm(false)
       await load()
@@ -116,6 +118,7 @@ export default function Menu() {
     try {
       await api.delete(`/restaurant/dish/${deleteId}`)
       setDishes((prev) => prev.filter((d) => d._id !== deleteId))
+      notify.success('Dish deleted.')
     } catch (e) {
       notify.error(e.message)
     } finally {

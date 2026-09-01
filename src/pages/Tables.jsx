@@ -6,6 +6,7 @@ import AdminPanelHeader from '../components/AdminPanelHeader'
 import { useAuth } from '../context/AuthContext'
 import { API_BASE_URL } from '../config/api'
 import { usePopup } from '../context/PopupContext'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 // QR icon inline — no extra dep
 function QRIcon({ className = 'h-4 w-4' }) {
@@ -38,6 +39,7 @@ export default function Tables() {
   const [addLoading, setAddLoading] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+  const [availableConfirmTableNo, setAvailableConfirmTableNo] = useState(null)
 
   useEffect(() => {
     let mounted = true
@@ -66,11 +68,41 @@ export default function Tables() {
     return () => { mounted = false; clearInterval(interval) }
   }, [])
 
-  async function markAvailable(tableNo) {
+  function hasActiveOrders(tableNo) {
+    return orders.some((o) => Number(o?.tableNo) === Number(tableNo) && String(o?.status || '').toLowerCase() !== 'completed')
+  }
+
+  function requestMarkAvailable(tableNo) {
+    setAvailableConfirmTableNo(tableNo)
+  }
+
+  async function confirmMarkAvailable() {
+    const tableNo = availableConfirmTableNo
+    if (tableNo == null) return
     try {
-      await api.patch(`/restaurant/tables/${tableNo}/available`, {})
+      const res = await api.patch(`/restaurant/tables/${tableNo}/available`, {})
       setTables((prev) => prev.map((t) => (t.tableNo === tableNo ? { ...t, status: 'available', waiterRequested: false } : t)))
       setSelectedTable((prev) => (prev?.tableNo === tableNo ? null : prev))
+      await apiFetchTables()
+      const autoCompleted = res?.autoCompletedOrders || 0
+      notify.success(
+        autoCompleted > 0
+          ? `Table ${tableNo} marked available. ${autoCompleted} order(s) auto-completed.`
+          : `Table ${tableNo} marked available.`
+      )
+    } catch (e) {
+      notify.error(e.message)
+    } finally {
+      setAvailableConfirmTableNo(null)
+    }
+  }
+
+  async function resolveWaiter(tableNo) {
+    try {
+      await api.patch(`/restaurant/tables/${tableNo}/resolve-waiter`, {})
+      setTables((prev) => prev.map((t) => (t.tableNo === tableNo ? { ...t, waiterRequested: false } : t)))
+      setSelectedTable((prev) => (prev?.tableNo === tableNo ? { ...prev, waiterRequested: false } : prev))
+      notify.success(`Waiter call resolved for table ${tableNo}.`)
     } catch (e) {
       notify.error(e.message)
     }
@@ -80,8 +112,9 @@ export default function Tables() {
     if (!isAdmin) return
     setAddLoading(true)
     try {
-      await api.post('/restaurant/tables/increase')
+      const res = await api.post('/restaurant/tables/increase')
       await apiFetchTables()
+      notify.success(res?.message || 'Table added.')
     } catch (e) {
       notify.error(e.message || 'Failed to add table')
     } finally {
@@ -110,9 +143,11 @@ export default function Tables() {
     setDeleteLoading(true)
     setDeleteError('')
     try {
+      const deletedTableNo = selectedTable.tableNo
       await api.delete(`/restaurant/tables/${selectedTable._id}`)
       setSelectedTable(null)
       await apiFetchTables()
+      notify.success(`Table ${deletedTableNo} deleted.`)
     } catch (e) {
       setDeleteError(e.message || 'Failed to delete table')
     } finally {
@@ -229,9 +264,18 @@ export default function Tables() {
 
                   {/* Alerts */}
                   {table.waiterRequested && (
-                    <p className="mt-2 text-xs font-medium text-red-500 flex items-center gap-1">
-                      <span>🔔</span> Waiter called
-                    </p>
+                    <div className="mt-2 flex items-center justify-between gap-1.5">
+                      <p className="text-xs font-medium text-red-500 flex items-center gap-1">
+                        <span>🔔</span> Waiter called
+                      </p>
+                      <button
+                        type="button"
+                        onClick={e => { e.stopPropagation(); resolveWaiter(table.tableNo) }}
+                        className="shrink-0 rounded-md bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700 hover:bg-red-200 transition-colors"
+                      >
+                        Resolve
+                      </button>
+                    </div>
                   )}
                   {table.allergyAlert && (
                     <div className="mt-1.5">
@@ -244,7 +288,7 @@ export default function Tables() {
                     {user && table.status !== 'available' ? (
                       <button
                         type="button"
-                        onClick={e => { e.stopPropagation(); markAvailable(table.tableNo) }}
+                        onClick={e => { e.stopPropagation(); requestMarkAvailable(table.tableNo) }}
                         className="text-xs font-medium text-blue-600 hover:text-blue-800 underline-offset-2 hover:underline transition-colors"
                       >
                         Mark available
@@ -379,6 +423,21 @@ export default function Tables() {
                   </div>
                 </div>
 
+                {selectedTable.waiterRequested && (
+                  <div className="mx-5 mt-4 flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5">
+                    <p className="text-sm font-medium text-red-600 flex items-center gap-1.5">
+                      <span>🔔</span> Waiter called
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => resolveWaiter(selectedTable.tableNo)}
+                      className="shrink-0 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 transition-colors"
+                    >
+                      Resolve
+                    </button>
+                  </div>
+                )}
+
                 <div className="px-5 py-5">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Seated customer</p>
                   {selectedTable.currentUser ? (
@@ -410,6 +469,20 @@ export default function Tables() {
             </div>
           )}
 
+          <ConfirmDialog
+            open={availableConfirmTableNo !== null}
+            title={`Mark table ${availableConfirmTableNo} available?`}
+            description={
+              availableConfirmTableNo !== null && hasActiveOrders(availableConfirmTableNo)
+                ? `This table still has active order(s) in progress. Marking it available will free it for a new guest and automatically mark those order(s) as completed.`
+                : `This will free table ${availableConfirmTableNo} for a new guest.`
+            }
+            confirmText="Mark available"
+            cancelText="Cancel"
+            danger={availableConfirmTableNo !== null && hasActiveOrders(availableConfirmTableNo)}
+            onCancel={() => setAvailableConfirmTableNo(null)}
+            onConfirm={confirmMarkAvailable}
+          />
         </div>
       )}
     </div>
